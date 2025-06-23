@@ -3,10 +3,13 @@ import { TickerData, PriceRow, SpreadData, SupportedExchange, SUPPORTED_SYMBOLS 
 export class DataProcessor {
   
   static processTickerData(allTickers: Record<SupportedExchange, TickerData[]>): PriceRow[] {
+    console.log('🔍 Processing ticker data for arbitrage opportunities...');
+    
     const symbolMap = new Map<string, Record<string, TickerData>>();
     
     // Group tickers by symbol
     Object.entries(allTickers).forEach(([exchangeName, tickers]) => {
+      console.log(`📊 Processing ${exchangeName}: ${tickers.length} tickers`);
       tickers.forEach(ticker => {
         if (!symbolMap.has(ticker.symbol)) {
           symbolMap.set(ticker.symbol, {});
@@ -15,21 +18,38 @@ export class DataProcessor {
       });
     });
 
+    console.log(`📈 Found ${symbolMap.size} unique symbols across all exchanges`);
+
     const priceRows: PriceRow[] = [];
 
     // Process each symbol that has data from at least 2 exchanges
     symbolMap.forEach((exchangeData, symbol) => {
       const exchanges = Object.keys(exchangeData);
+      console.log(`🔍 ${symbol}: available on ${exchanges.length} exchanges [${exchanges.join(', ')}]`);
+      
       if (exchanges.length >= 2) {
         const priceRow = this.createPriceRow(symbol, exchangeData);
         if (priceRow) {
+          console.log(`✅ ${symbol}: Spread ${priceRow.spread.percentage.toFixed(4)}% (${priceRow.spread.bestBuy} → ${priceRow.spread.bestSell})`);
           priceRows.push(priceRow);
+        } else {
+          console.log(`❌ ${symbol}: Failed to create price row`);
         }
+      } else {
+        console.log(`⚠️  ${symbol}: Only available on ${exchanges.length} exchange(s), skipping`);
       }
     });
 
+    console.log(`🎯 Generated ${priceRows.length} arbitrage opportunities`);
+
     // Sort by spread percentage (highest first)
-    return priceRows.sort((a, b) => b.spread.percentage - a.spread.percentage);
+    const sortedRows = priceRows.sort((a, b) => b.spread.percentage - a.spread.percentage);
+    
+    if (sortedRows.length > 0) {
+      console.log(`🏆 Best opportunity: ${sortedRows[0].symbol} with ${sortedRows[0].spread.percentage.toFixed(4)}% spread`);
+    }
+
+    return sortedRows;
   }
 
   private static createPriceRow(symbol: string, exchangeData: Record<string, TickerData>): PriceRow | null {
@@ -49,11 +69,22 @@ export class DataProcessor {
     });
 
     if (prices.length < 2) {
+      console.log(`❌ ${symbol}: Less than 2 prices available`);
       return null;
     }
 
     // Calculate spread
     const spread = this.calculateSpread(prices, exchangeNames);
+    
+    // Log price details for debugging
+    const priceDetails = prices.map((price, i) => `${exchangeNames[i]}: $${price}`).join(', ');
+    console.log(`💰 ${symbol} prices: ${priceDetails}`);
+
+    // Only include if there's an actual spread (avoid zero spreads)
+    if (spread.percentage < 0.001) {
+      console.log(`⚠️  ${symbol}: Spread too small (${spread.percentage.toFixed(6)}%), skipping`);
+      return null;
+    }
 
     // Generate mock funding rate for some symbols (this would come from real API in production)
     const fundingRate = Math.random() > 0.7 ? {
@@ -76,9 +107,12 @@ export class DataProcessor {
     const minIndex = prices.indexOf(minPrice);
     const maxIndex = prices.indexOf(maxPrice);
 
+    const absolute = maxPrice - minPrice;
+    const percentage = ((maxPrice - minPrice) / minPrice) * 100;
+
     return {
-      absolute: maxPrice - minPrice,
-      percentage: ((maxPrice - minPrice) / minPrice) * 100,
+      absolute,
+      percentage,
       bestBuy: exchangeNames[minIndex], // Buy from exchange with lowest price
       bestSell: exchangeNames[maxIndex]  // Sell to exchange with highest price
     };

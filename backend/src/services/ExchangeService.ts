@@ -29,7 +29,8 @@ export class ExchangeService {
         { name: 'bybit', class: ccxt.bybit }
       ];
 
-      exchangeConfigs.forEach(({ name, class: ExchangeClass }) => {
+      // Initialize exchanges in parallel
+      const initPromises = exchangeConfigs.map(async ({ name, class: ExchangeClass }) => {
         try {
           const exchange = new ExchangeClass({
             sandbox: false,
@@ -38,10 +39,14 @@ export class ExchangeService {
           });
           this.exchanges.set(name as SupportedExchange, exchange);
           console.log(`✅ Initialized ${name} exchange`);
+          return { name, success: true };
         } catch (error) {
           console.error(`❌ Failed to initialize ${name}:`, error);
+          return { name, success: false, error };
         }
       });
+
+      await Promise.allSettled(initPromises);
     } catch (error) {
       console.error('❌ Failed to import CCXT:', error);
       // Initialize without CCXT for demo mode
@@ -74,6 +79,7 @@ export class ExchangeService {
     const cached = this.cache.get(cacheKey);
     
     if (cached && Date.now() - cached[0]?.timestamp < this.CACHE_TTL) {
+      console.log(`🔄 Using cached data for ${exchangeName} (${cached.length} tickers)`);
       return cached;
     }
 
@@ -85,28 +91,43 @@ export class ExchangeService {
     try {
       console.log(`🔄 Fetching tickers from ${exchangeName}...`);
       
-      const tickers: TickerData[] = [];
-      
-      for (const symbol of SUPPORTED_SYMBOLS) {
+      // Fetch all symbols in parallel instead of sequentially
+      const tickerPromises = SUPPORTED_SYMBOLS.map(async (symbol): Promise<TickerData | null> => {
         try {
           const ticker = await exchange.fetchTicker(symbol);
           
           if (ticker && ticker.last && ticker.quoteVolume) {
-            tickers.push({
+            return {
               symbol,
               price: ticker.last,
               volume: ticker.quoteVolume,
               timestamp: Date.now()
-            });
+            };
           }
+          return null;
         } catch (symbolError) {
           console.warn(`⚠️  ${exchangeName}: ${symbol} not available`);
+          return null;
         }
-      }
+      });
+
+      // Wait for all ticker fetches to complete
+      const tickerResults = await Promise.allSettled(tickerPromises);
+      
+      // Filter out failed/null results
+      const tickers: TickerData[] = tickerResults
+        .filter((result): result is PromiseFulfilledResult<TickerData> => 
+          result.status === 'fulfilled' && result.value !== null
+        )
+        .map(result => result.value);
 
       console.log(`✅ Fetched ${tickers.length} tickers from ${exchangeName}`);
       
-      this.cache.set(cacheKey, tickers);
+      // Cache the results
+      if (tickers.length > 0) {
+        this.cache.set(cacheKey, tickers);
+      }
+      
       return tickers;
       
     } catch (error) {
@@ -116,20 +137,41 @@ export class ExchangeService {
   }
 
   async fetchAllTickers(): Promise<Record<SupportedExchange, TickerData[]>> {
-    const results: Record<string, TickerData[]> = {};
+    console.log('🔄 Fetching data from all exchanges in parallel...');
     
-    const promises = Array.from(this.exchanges.keys()).map(async (exchangeName) => {
+    // Get all available exchanges
+    const availableExchanges = Array.from(this.exchanges.keys());
+    console.log(`📊 Available exchanges: ${availableExchanges.join(', ')}`);
+    
+    // Fetch from all exchanges in parallel
+    const fetchPromises = availableExchanges.map(async (exchangeName): Promise<[string, TickerData[]]> => {
       try {
         const tickers = await this.fetchTickers(exchangeName);
-        results[exchangeName] = tickers;
+        return [exchangeName, tickers];
       } catch (error) {
         console.error(`❌ Failed to fetch from ${exchangeName}:`, error);
-        results[exchangeName] = [];
+        return [exchangeName, []];
       }
     });
 
-    await Promise.allSettled(promises);
-    return results as Record<SupportedExchange, TickerData[]>;
+    // Wait for all fetches to complete
+    const results = await Promise.allSettled(fetchPromises);
+    
+    // Build results object
+    const allTickers: Record<string, TickerData[]> = {};
+    let totalSymbols = 0;
+    
+    results.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        const [exchangeName, tickers] = result.value;
+        allTickers[exchangeName] = tickers;
+        totalSymbols += tickers.length;
+        console.log(`📈 ${exchangeName}: ${tickers.length} symbols`);
+      }
+    });
+    
+    console.log(`✅ Total symbols fetched: ${totalSymbols}`);
+    return allTickers as Record<SupportedExchange, TickerData[]>;
   }
 
   async fetchFundingRates(exchangeName: SupportedExchange): Promise<any[]> {
