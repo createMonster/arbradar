@@ -1,10 +1,10 @@
 'use client';
 
 import React from 'react';
-import { TrendingUp, TrendingDown, Clock } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
 import { Skeleton } from '@/components/ui/skeleton';
 import { PriceRow, FilterOptions, Language } from '../types';
 
@@ -143,129 +143,136 @@ export default function PriceTable({ data, filters, language, isLoading = false 
     );
   }
 
+  // Sort by spread percentage descending (best opportunities first)
+  const sortedData = [...filteredData].sort((a, b) => b.spread.percentage - a.spread.percentage);
+
   return (
-    <Card className="technical-card">
-      <CardHeader className="technical-header">
-        <CardTitle className="flex items-center justify-between font-mono">
-          <span>PRICE_ARBITRAGE_MONITOR [{filteredData.length}]</span>
-          <Badge variant="outline" className="ml-2 bg-white text-black border-white font-mono">
-            <Clock className="mr-1 h-3 w-3" />
-            LIVE
-          </Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-b-2 border-gray-600">
-                <TableHead className="min-w-[100px] technical-label">{currentTranslations.symbol.toUpperCase()}</TableHead>
-                {exchanges.map(exchange => (
-                  <TableHead key={exchange} className="text-center min-w-[120px] technical-label">
-                    {exchange.toUpperCase()}
-                    <div className="text-xs text-muted-foreground">{currentTranslations.price.toUpperCase()}</div>
-                  </TableHead>
-                ))}
-                <TableHead className="text-center min-w-[120px] technical-label">
-                  {currentTranslations.spread.toUpperCase()}
-                  <div className="text-xs text-muted-foreground">%</div>
-                </TableHead>
-                <TableHead className="text-center min-w-[140px] technical-label">
-                  {currentTranslations.bestBuy.toUpperCase()} / {currentTranslations.bestSell.toUpperCase()}
-                </TableHead>
-                {language === 'en' && (
-                  <TableHead className="text-center min-w-[120px] technical-label">
-                    {currentTranslations.fundingRate.toUpperCase()}
-                  </TableHead>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredData.map((row) => (
-                <TableRow key={row.symbol} className="hover:bg-gray-800/50 border-b border-gray-700">
-                  <TableCell className="font-medium">
-                    <div className="flex flex-col">
-                      <span className="technical-value text-white">{row.symbol}</span>
-                      <span className="technical-label">
-                        VOL: {formatNumber(Object.values(row.exchanges).reduce((sum, ex) => sum + ex.volume, 0), 0)}
-                      </span>
+    <div className="space-y-4">
+      {/* Header */}
+      <Card className="technical-card">
+        <CardHeader className="technical-header">
+          <CardTitle className="flex items-center justify-between font-mono">
+            <span>ARBITRAGE_OPPORTUNITIES [{sortedData.length}]</span>
+            <Badge variant="outline" className="ml-2 bg-white text-black border-white font-mono">
+              <Clock className="mr-1 h-3 w-3" />
+              LIVE
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+      </Card>
+
+      {/* Token Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {sortedData.map((row) => {
+          const bestBuyExchange = row.exchanges[row.spread.bestBuy];
+          const bestSellExchange = row.exchanges[row.spread.bestSell];
+          const totalVolume = Object.values(row.exchanges).reduce((sum, ex) => sum + ex.volume, 0);
+          
+          return (
+            <Card key={row.symbol} className="technical-card hover:bg-gray-700/30 transition-colors cursor-pointer">
+              {/* Card Header with Symbol and Spread */}
+              <div className="technical-header flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <span className="font-mono font-bold text-lg">{row.symbol}</span>
+                  <Badge variant="secondary" className="bg-gray-700 text-white font-mono text-xs">
+                    SPOT
+                  </Badge>
+                </div>
+                <div className={`text-right ${getSpreadColor(row.spread.percentage)}`}>
+                  <div className="font-mono font-bold text-lg">
+                    {row.spread.percentage.toFixed(2)}%
+                  </div>
+                  <div className="text-xs text-gray-400 font-mono">
+                    ${row.spread.absolute.toFixed(4)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Card Content */}
+              <CardContent className="pt-4 space-y-3">
+                {/* Best Buy/Sell Prices */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <div className="technical-label">BUY FROM</div>
+                    <div className="bg-gray-800 p-2 rounded border border-gray-600">
+                      <div className="font-mono font-bold text-green-400">
+                        {row.spread.bestBuy}
+                      </div>
+                      <div className="technical-value text-white">
+                        ${bestBuyExchange?.price.toFixed(bestBuyExchange.price > 1 ? 2 : 6)}
+                      </div>
                     </div>
-                  </TableCell>
+                  </div>
                   
-                  {exchanges.map(exchange => {
-                    const exchangeData = row.exchanges[exchange];
-                    if (!exchangeData) {
-                      return <TableCell key={exchange} className="text-center text-muted-foreground">-</TableCell>;
-                    }
-                    
-                    const isLowest = row.spread.bestBuy === exchange;
-                    const isHighest = row.spread.bestSell === exchange;
-                    
-                    return (
-                      <TableCell key={exchange} className="text-center">
-                        <div className="flex flex-col">
-                          <span className={`font-mono ${
-                            isLowest ? 'text-green-600 font-semibold' : 
-                            isHighest ? 'text-red-600 font-semibold' : ''
-                          }`}>
-                            ${formatNumber(exchangeData.price, exchangeData.price > 1 ? 2 : 4)}
-                            {isLowest && <TrendingDown className="inline ml-1 h-3 w-3" />}
-                            {isHighest && <TrendingUp className="inline ml-1 h-3 w-3" />}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
+                  <div className="space-y-1">
+                    <div className="technical-label">SELL TO</div>
+                    <div className="bg-gray-800 p-2 rounded border border-gray-600">
+                      <div className="font-mono font-bold text-red-400">
+                        {row.spread.bestSell}
+                      </div>
+                      <div className="technical-value text-white">
+                        ${bestSellExchange?.price.toFixed(bestSellExchange.price > 1 ? 2 : 6)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Exchange Prices Grid */}
+                <div className="space-y-2">
+                  <div className="technical-label">ALL EXCHANGES</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {exchanges.map(exchange => {
+                      const exchangeData = row.exchanges[exchange];
+                      if (!exchangeData) return null;
+                      
+                      const isHighest = exchange === row.spread.bestSell;
+                      const isLowest = exchange === row.spread.bestBuy;
+                      
+                      return (
+                        <div 
+                          key={exchange} 
+                          className={`p-2 rounded text-xs border ${
+                            isHighest ? 'border-red-500 bg-red-900/20' : 
+                            isLowest ? 'border-green-500 bg-green-900/20' : 
+                            'border-gray-600 bg-gray-800/50'
+                          }`}
+                        >
+                          <div className="font-mono font-semibold text-white">
+                            {exchange}
+                          </div>
+                          <div className="technical-value">
+                            ${exchangeData.price.toFixed(exchangeData.price > 1 ? 2 : 6)}
+                          </div>
+                          <div className="text-gray-400 text-xs">
                             {formatTime(exchangeData.lastUpdated)}
-                          </span>
+                          </div>
                         </div>
-                      </TableCell>
-                    );
-                  })}
-                  
-                  <TableCell className="text-center">
-                    <div className="flex flex-col">
-                      <span className={`font-mono ${getSpreadColor(row.spread.percentage)}`}>
-                        {formatPercentage(row.spread.percentage)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        ${formatNumber(row.spread.absolute, 4)}
-                      </span>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Volume and Funding Rate */}
+                <div className="flex justify-between items-center pt-2 border-t border-gray-700">
+                  <div className="technical-label">
+                    VOL: {formatNumber(totalVolume, 0)}
+                  </div>
+                  {row.fundingRate && (
+                    <div className="text-right">
+                      <div className="technical-label">FUNDING</div>
+                      <div className={`technical-value ${
+                        row.fundingRate.rate >= 0 ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {formatPercentage(row.fundingRate.rate * 100)}
+                      </div>
                     </div>
-                  </TableCell>
-                  
-                  <TableCell className="text-center">
-                    <div className="flex flex-col space-y-1">
-                      <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                        Buy: {row.spread.bestBuy}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs bg-red-50 text-red-700 border-red-200">
-                        Sell: {row.spread.bestSell}
-                      </Badge>
-                    </div>
-                  </TableCell>
-                  
-                  {language === 'en' && (
-                    <TableCell className="text-center">
-                      {row.fundingRate ? (
-                        <div className="flex flex-col">
-                          <span className={`font-mono text-sm ${
-                            row.fundingRate.rate >= 0 ? 'text-red-600' : 'text-green-600'
-                          }`}>
-                            {formatPercentage(row.fundingRate.rate * 100)}
-                          </span>
-                          <span className="text-xs text-muted-foreground">
-                            {row.fundingRate.exchange}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
                   )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-    </Card>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
   );
 } 
