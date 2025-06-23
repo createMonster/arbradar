@@ -13,11 +13,12 @@ interface PriceTableProps {
   filters: FilterOptions;
   language: Language;
   isLoading?: boolean;
+  connectionStatus?: 'connected' | 'disconnected' | 'checking';
 }
 
 const exchanges = ['Binance', 'OKX', 'Bitget', 'Bybit'];
 
-export default function PriceTable({ data, filters, language, isLoading = false }: PriceTableProps) {
+export default function PriceTable({ data, filters, language, isLoading = false, connectionStatus = 'checking' }: PriceTableProps) {
   const t = {
     en: {
       symbol: 'Symbol',
@@ -30,6 +31,9 @@ export default function PriceTable({ data, filters, language, isLoading = false 
       lastUpdated: 'Last Updated',
       noData: 'No data matches your filters',
       loading: 'Loading...',
+      disconnected: 'Backend disconnected - Demo mode',
+      connecting: 'Connecting to exchanges...',
+      noArbitrage: 'No arbitrage opportunities found',
     },
     zh: {
       symbol: '交易对',
@@ -42,6 +46,9 @@ export default function PriceTable({ data, filters, language, isLoading = false 
       lastUpdated: '最后更新',
       noData: '没有数据匹配您的筛选条件',
       loading: '加载中...',
+      disconnected: '后端断开连接 - 演示模式',
+      connecting: '连接交易所中...',
+      noArbitrage: '未找到套利机会',
     }
   };
 
@@ -153,10 +160,24 @@ export default function PriceTable({ data, filters, language, isLoading = false 
         <CardHeader className="technical-header">
           <CardTitle className="flex items-center justify-between font-mono">
             <span>ARBITRAGE_OPPORTUNITIES [{sortedData.length}]</span>
-            <Badge variant="outline" className="ml-2 bg-white text-black border-white font-mono">
-              <Clock className="mr-1 h-3 w-3" />
-              LIVE
-            </Badge>
+            <div className="flex items-center space-x-2">
+              {connectionStatus === 'connected' && (
+                <Badge variant="outline" className="bg-green-900 text-green-200 border-green-600 font-mono">
+                  <Clock className="mr-1 h-3 w-3" />
+                  LIVE
+                </Badge>
+              )}
+              {connectionStatus === 'disconnected' && (
+                <Badge variant="outline" className="bg-red-900 text-red-200 border-red-600 font-mono">
+                  OFFLINE
+                </Badge>
+              )}
+              {connectionStatus === 'checking' && (
+                <Badge variant="outline" className="bg-yellow-900 text-yellow-200 border-yellow-600 font-mono">
+                  CONNECTING...
+                </Badge>
+              )}
+            </div>
           </CardTitle>
         </CardHeader>
       </Card>

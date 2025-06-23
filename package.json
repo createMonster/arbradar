@@ -1,12 +1,20 @@
 {
-  "name": "arbradar",
+  "name": "arbradar-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Crypto arbitrage monitoring backend with real-time exchange data",
+  "main": "dist/index.js",
   "scripts": {
+    "dev": "nodemon src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": [
+    "crypto",
+    "arbitrage",
+    "ccxt",
+    "exchange"
+  ],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.12.2+sha512.a32540185b964ee30bb4e979e405adc6af59226b438ee4cc19f9e8773667a66d302f5bfee60a39d3cac69e35e4b96e708a71dd002b7e9359c4112a1722ac323f"
