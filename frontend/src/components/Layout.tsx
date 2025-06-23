@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Settings, Globe, Menu, X } from 'lucide-react';
+import { Settings, Globe, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -53,13 +53,13 @@ export default function Layout({ children, language, onLanguageChange }: LayoutP
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <header className="sticky top-0 z-50 w-full border-b-2 border-gray-600 bg-gray-900/95 backdrop-blur supports-[backdrop-filter]:bg-gray-900/80">
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
             {/* Logo and Title */}
             <div className="flex items-center space-x-4">
-              <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
-                {currentTranslations.title}
+              <div className="text-2xl font-mono font-bold text-white uppercase tracking-wider">
+                [{currentTranslations.title}]
               </div>
             </div>
 
@@ -80,7 +80,7 @@ export default function Layout({ children, language, onLanguageChange }: LayoutP
               {/* Settings */}
               <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="technical-button border-gray-600 hover:bg-gray-800 hover:text-white">
                     <Settings className="mr-2 h-4 w-4" />
                     {currentTranslations.settings}
                   </Button>

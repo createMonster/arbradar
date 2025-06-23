@@ -80,21 +80,21 @@ export default function FilterPanel({ filters, onFiltersChange, language }: Filt
   };
 
   return (
-    <Card className="mb-6">
-      <CardHeader className="pb-3">
+    <Card className="mb-6 technical-card">
+      <CardHeader className="pb-3 technical-header">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center text-lg">
+          <CardTitle className="flex items-center text-lg font-mono">
             <Filter className="mr-2 h-5 w-5" />
-            {currentTranslations.filters}
+            {currentTranslations.filters.toUpperCase()}
           </CardTitle>
           <Button 
             variant="outline" 
             size="sm" 
             onClick={clearFilters}
-            className="text-sm"
+            className="text-sm technical-button border-gray-600 hover:bg-gray-800 hover:text-white"
           >
             <X className="mr-1 h-4 w-4" />
-            {currentTranslations.clearFilters}
+            {currentTranslations.clearFilters.toUpperCase()}
           </Button>
         </div>
       </CardHeader>
@@ -104,10 +104,10 @@ export default function FilterPanel({ filters, onFiltersChange, language }: Filt
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
           <input
             type="text"
-            placeholder={currentTranslations.search}
+            placeholder={currentTranslations.search.toUpperCase()}
             value={searchTerm}
             onChange={handleSearchChange}
-            className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-white focus:border-transparent technical-input font-mono"
           />
         </div>
 
@@ -115,8 +115,8 @@ export default function FilterPanel({ filters, onFiltersChange, language }: Filt
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Min Volume */}
           <div>
-            <label className="block text-sm font-medium mb-2">
-              {currentTranslations.minVolume}
+            <label className="block technical-label mb-2">
+              {currentTranslations.minVolume.toUpperCase()}
             </label>
             <Select 
               value={filters.minVolume.toString()} 
@@ -138,8 +138,8 @@ export default function FilterPanel({ filters, onFiltersChange, language }: Filt
 
           {/* Min Spread */}
           <div>
-            <label className="block text-sm font-medium mb-2">
-              {currentTranslations.minSpread}
+            <label className="block technical-label mb-2">
+              {currentTranslations.minSpread.toUpperCase()}
             </label>
             <Select 
               value={filters.minSpread.toString()} 
@@ -161,8 +161,8 @@ export default function FilterPanel({ filters, onFiltersChange, language }: Filt
 
           {/* Exchange Filter */}
           <div>
-            <label className="block text-sm font-medium mb-2">
-              {currentTranslations.exchanges}
+            <label className="block technical-label mb-2">
+              {currentTranslations.exchanges.toUpperCase()}
             </label>
             <div className="flex flex-wrap gap-2">
               {exchanges.map(exchange => (
@@ -199,7 +199,7 @@ export default function FilterPanel({ filters, onFiltersChange, language }: Filt
             )}
             {filters.searchTerm && (
               <Badge variant="secondary">
-                "{filters.searchTerm}"
+                &quot;{filters.searchTerm}&quot;
               </Badge>
             )}
           </div>

@@ -26,9 +26,8 @@ export default function Home() {
       setIsLoading(false);
     };
 
-    // Simulate loading time
-    const timer = setTimeout(initializeData, 2000);
-    return () => clearTimeout(timer);
+    // Initialize immediately for better UX
+    initializeData();
   }, []);
 
   // Update data periodically
@@ -37,7 +36,7 @@ export default function Home() {
 
     const interval = setInterval(() => {
       setData(currentData => updateMockData(currentData));
-    }, 10000); // Update every 10 seconds
+    }, 30000); // Update every 30 seconds for better UX
 
     return () => clearInterval(interval);
   }, [data.length]);

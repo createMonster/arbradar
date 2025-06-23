@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { TrendingUp, TrendingDown, Clock, ArrowUpDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -74,10 +74,10 @@ export default function PriceTable({ data, filters, language, isLoading = false 
   };
 
   const getSpreadColor = (percentage: number): string => {
-    if (percentage >= 2) return 'text-green-600 font-semibold';
-    if (percentage >= 1) return 'text-green-500';
-    if (percentage >= 0.5) return 'text-yellow-600';
-    return 'text-gray-500';
+    if (percentage >= 2) return 'text-white font-bold bg-gray-700 px-2 py-1 rounded';
+    if (percentage >= 1) return 'text-gray-200 font-semibold';
+    if (percentage >= 0.5) return 'text-gray-400';
+    return 'text-gray-600';
   };
 
   const filterData = (data: PriceRow[]): PriceRow[] => {
@@ -144,13 +144,13 @@ export default function PriceTable({ data, filters, language, isLoading = false 
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>Price Arbitrage Opportunities ({filteredData.length})</span>
-          <Badge variant="outline" className="ml-2">
+    <Card className="technical-card">
+      <CardHeader className="technical-header">
+        <CardTitle className="flex items-center justify-between font-mono">
+          <span>PRICE_ARBITRAGE_MONITOR [{filteredData.length}]</span>
+          <Badge variant="outline" className="ml-2 bg-white text-black border-white font-mono">
             <Clock className="mr-1 h-3 w-3" />
-            Live
+            LIVE
           </Badge>
         </CardTitle>
       </CardHeader>
@@ -158,36 +158,36 @@ export default function PriceTable({ data, filters, language, isLoading = false 
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead className="min-w-[100px]">{currentTranslations.symbol}</TableHead>
+              <TableRow className="border-b-2 border-gray-600">
+                <TableHead className="min-w-[100px] technical-label">{currentTranslations.symbol.toUpperCase()}</TableHead>
                 {exchanges.map(exchange => (
-                  <TableHead key={exchange} className="text-center min-w-[120px]">
-                    {exchange}
-                    <div className="text-xs text-muted-foreground">{currentTranslations.price}</div>
+                  <TableHead key={exchange} className="text-center min-w-[120px] technical-label">
+                    {exchange.toUpperCase()}
+                    <div className="text-xs text-muted-foreground">{currentTranslations.price.toUpperCase()}</div>
                   </TableHead>
                 ))}
-                <TableHead className="text-center min-w-[120px]">
-                  {currentTranslations.spread}
+                <TableHead className="text-center min-w-[120px] technical-label">
+                  {currentTranslations.spread.toUpperCase()}
                   <div className="text-xs text-muted-foreground">%</div>
                 </TableHead>
-                <TableHead className="text-center min-w-[140px]">
-                  {currentTranslations.bestBuy} / {currentTranslations.bestSell}
+                <TableHead className="text-center min-w-[140px] technical-label">
+                  {currentTranslations.bestBuy.toUpperCase()} / {currentTranslations.bestSell.toUpperCase()}
                 </TableHead>
                 {language === 'en' && (
-                  <TableHead className="text-center min-w-[120px]">
-                    {currentTranslations.fundingRate}
+                  <TableHead className="text-center min-w-[120px] technical-label">
+                    {currentTranslations.fundingRate.toUpperCase()}
                   </TableHead>
                 )}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredData.map((row, index) => (
-                <TableRow key={row.symbol} className="hover:bg-muted/50">
+              {filteredData.map((row) => (
+                <TableRow key={row.symbol} className="hover:bg-gray-800/50 border-b border-gray-700">
                   <TableCell className="font-medium">
                     <div className="flex flex-col">
-                      <span>{row.symbol}</span>
-                      <span className="text-xs text-muted-foreground">
-                        Vol: {formatNumber(Object.values(row.exchanges).reduce((sum, ex) => sum + ex.volume, 0), 0)}
+                      <span className="technical-value text-white">{row.symbol}</span>
+                      <span className="technical-label">
+                        VOL: {formatNumber(Object.values(row.exchanges).reduce((sum, ex) => sum + ex.volume, 0), 0)}
                       </span>
                     </div>
                   </TableCell>
