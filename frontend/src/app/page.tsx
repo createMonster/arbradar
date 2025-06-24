@@ -15,15 +15,17 @@ export default function Home() {
   const [filters, setFilters] = useState<FilterOptions>({
     minVolume: 0,
     minSpread: 0,
-    selectedExchanges: ['Binance', 'OKX', 'Bitget', 'Bybit'],
+    selectedExchanges: [], // Start with all exchanges
     searchTerm: ''
   });
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'checking'>('checking');
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
+      setConnectionStatus('checking');
       
       console.log('🔄 Fetching data with filters:', filters);
       
@@ -32,10 +34,12 @@ export default function Home() {
       console.log('✅ Data received:', result);
       setData(result.data);
       setLastUpdate(new Date());
+      setConnectionStatus('connected');
       
     } catch (err) {
       console.error('❌ Error fetching data:', err);
       setError(`Failed to fetch data: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setConnectionStatus('disconnected');
     } finally {
       setLoading(false);
     }
@@ -46,9 +50,9 @@ export default function Home() {
     fetchData();
   }, [fetchData]);
 
-  // Periodic updates every 5 seconds
+  // Periodic updates every 50 seconds
   useEffect(() => {
-    const interval = setInterval(fetchData, 5000);
+    const interval = setInterval(fetchData, 50000);
     return () => clearInterval(interval);
   }, [fetchData]);
 
@@ -102,7 +106,7 @@ export default function Home() {
             filters={filters}
             language={language}
             isLoading={loading}
-            connectionStatus="connected"
+            connectionStatus={connectionStatus}
           />
         </div>
 

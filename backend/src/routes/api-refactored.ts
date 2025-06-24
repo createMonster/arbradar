@@ -110,9 +110,53 @@ router.get('/spreads', validateQueryParams, async (req: Request, res: Response) 
     // Use the data service
     const result = await dataService.getSpreads(filters, forceRefresh);
     
+    // Transform SpreadData[] to PriceRow[] for frontend compatibility
+    const transformedData = result.data.map((spread: any) => {
+      // Transform exchanges data to match frontend expectations
+      const exchangesData: any = {};
+      Object.entries(spread.exchanges).forEach(([exchangeName, data]: [string, any]) => {
+        exchangesData[exchangeName] = {
+          price: data.price,
+          volume: data.volume,
+          lastUpdated: spread.lastUpdated || Date.now()
+        };
+      });
+
+      // Create funding rate data if available
+      let fundingRate = undefined;
+      const fundingRates = Object.values(spread.exchanges).filter((ex: any) => ex.fundingRate !== 0);
+      if (fundingRates.length > 0) {
+        const bestFundingEx = fundingRates[0] as any;
+        fundingRate = {
+          rate: bestFundingEx.fundingRate,
+          nextTime: bestFundingEx.nextFundingTime || Date.now() + (8 * 60 * 60 * 1000),
+          exchange: spread.priceSpread.buyExchange
+        };
+      }
+
+      return {
+        symbol: spread.symbol,
+        exchanges: exchangesData,
+        spread: {
+          absolute: spread.spread.absolute,
+          percentage: spread.spread.percentage,
+          bestBuy: spread.spread.bestBuy,
+          bestSell: spread.spread.bestSell
+        },
+        fundingRate
+      };
+    });
+    
     console.log(`✅ Returning ${result.count} arbitrage opportunities`);
     
-    res.json(result);
+    res.json({
+      success: result.success,
+      data: transformedData,
+      count: result.count,
+      total: result.total,
+      timestamp: result.timestamp,
+      cached: result.cached
+    });
     
   } catch (error) {
     handleServiceError(error, res);

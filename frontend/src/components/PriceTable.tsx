@@ -1,5 +1,6 @@
 'use client';
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import React from 'react';
 import { Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -87,37 +88,43 @@ export default function PriceTable({ data, filters, language, isLoading = false,
     return 'text-gray-600';
   };
 
-  const filterData = (data: PriceRow[]): PriceRow[] => {
-    return data.filter(row => {
-      // Search filter
-      if (filters.searchTerm && !row.symbol.toLowerCase().includes(filters.searchTerm.toLowerCase())) {
-        return false;
-      }
+  // const filterData = (data: PriceRow[]): PriceRow[] => {
+  //   return data.filter(row => {
+  //     // Search filter
+  //     if (filters.searchTerm && !row.symbol.toLowerCase().includes(filters.searchTerm.toLowerCase())) {
+  //       return false;
+  //     }
 
-      // Volume filter
-      const totalVolume = Object.values(row.exchanges).reduce((sum, exchange) => sum + exchange.volume, 0);
-      if (totalVolume < filters.minVolume) {
-        return false;
-      }
+  //     // Volume filter - only apply if minVolume > 0
+  //     if (filters.minVolume > 0) {
+  //       const totalVolume = Object.values(row.exchanges).reduce((sum, exchange) => sum + exchange.volume, 0);
+  //       if (totalVolume < filters.minVolume) {
+  //         return false;
+  //       }
+  //     }
 
-      // Spread filter
-      if (row.spread.percentage < filters.minSpread) {
-        return false;
-      }
+  //     // Spread filter - only apply if minSpread > 0
+  //     if (filters.minSpread > 0 && row.spread.percentage < filters.minSpread) {
+  //       return false;
+  //     }
 
-      // Exchange filter
-      const hasSelectedExchange = filters.selectedExchanges.some(exchange => 
-        row.exchanges[exchange] !== undefined
-      );
-      if (!hasSelectedExchange) {
-        return false;
-      }
+  //     // Exchange filter - only apply if specific exchanges are selected
+  //     if (filters.selectedExchanges.length > 0) {
+  //       const hasSelectedExchange = filters.selectedExchanges.some(exchange => 
+  //         row.exchanges[exchange] !== undefined
+  //       );
+  //       if (!hasSelectedExchange) {
+  //         return false;
+  //       }
+  //     }
 
-      return true;
-    });
-  };
+  //     return true;
+  //   });
+  // };
 
-  const filteredData = filterData(data);
+  //const filteredData = filterData(data);
+  // no filter for now
+  const filteredData = data;
 
   if (isLoading) {
     return (

@@ -89,9 +89,10 @@ export class DataService {
     }
 
     let filteredSpreads = allData.spreads;
-    if (filters) {
-      filteredSpreads = this.arbitrageService.applyFilters(allData.spreads, filters);
-    }
+    // Remove filters for now
+    // if (filters) {
+    //   filteredSpreads = this.arbitrageService.applyFilters(allData.spreads, filters);
+    // }
 
     return {
       success: true,
