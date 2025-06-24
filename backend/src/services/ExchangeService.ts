@@ -35,7 +35,7 @@ export class ExchangeService {
   private exchanges: { [key: string]: any } = {};
   private filterCriteria: FilterCriteria;
   private cache: Map<string, any> = new Map();
-  private readonly CACHE_TTL = 5000; // 5 seconds
+  private readonly CACHE_TTL = 600000; // 10 minutes
 
   constructor(filterCriteria: FilterCriteria) {
     this.filterCriteria = filterCriteria;
