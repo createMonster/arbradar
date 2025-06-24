@@ -99,13 +99,22 @@ export class ExchangeService {
   public async fetchAllTickers(exchangeName: string): Promise<TickerData> {
     try {
       console.log(`📡 Fetching all tickers from ${exchangeName}...`);
+      const startTime = Date.now();
       
       const exchange = this.exchanges[exchangeName];
       if (!exchange) {
         throw new Error(`Exchange ${exchangeName} not found`);
       }
 
-      // Load markets first
+      // Check cache first
+      const cacheKey = `tickers_${exchangeName}`;
+      const cached = this.cache.get(cacheKey);
+      if (cached && (Date.now() - cached.timestamp) < this.CACHE_TTL) {
+        console.log(`📦 Using cached tickers for ${exchangeName}`);
+        return cached.data;
+      }
+
+      // Load markets first (cached by CCXT)
       await exchange.loadMarkets();
       
       // Get all tickers for perpetual contracts
@@ -125,7 +134,12 @@ export class ExchangeService {
         }
       }
       
-      console.log(`✅ ${exchangeName}: ${filteredCount}/${totalCount} tickers after filtering`);
+      const elapsed = Date.now() - startTime;
+      console.log(`✅ ${exchangeName}: ${filteredCount}/${totalCount} tickers after filtering in ${elapsed}ms`);
+      
+      // Cache the result
+      this.cache.set(cacheKey, { data: filteredTickers, timestamp: Date.now() });
+      
       return filteredTickers;
       
     } catch (error: any) {
@@ -137,20 +151,61 @@ export class ExchangeService {
   public async fetchFundingRates(exchangeName: string, symbols: string[]): Promise<FundingRateData> {
     try {
       console.log(`💰 Fetching funding rates from ${exchangeName}...`);
+      const startTime = Date.now();
       
       const exchange = this.exchanges[exchangeName];
       if (!exchange) {
         throw new Error(`Exchange ${exchangeName} not found`);
       }
 
+      // Check cache first
+      const cacheKey = `funding_rates_${exchangeName}`;
+      const cached = this.cache.get(cacheKey);
+      if (cached && (Date.now() - cached.timestamp) < this.CACHE_TTL) {
+        console.log(`📦 Using cached funding rates for ${exchangeName}`);
+        return cached.data;
+      }
+
       const fundingRates: FundingRateData = {};
       const symbolsArray = Array.isArray(symbols) ? symbols : Object.keys(symbols);
       
-      // Fetch funding rates in batches to avoid rate limits
-      const batchSize = 10;
+      // Try bulk fetch first (much faster if supported)
+      if (exchange.has && exchange.has['fetchFundingRates']) {
+        try {
+          console.log(`🚀 Using bulk funding rates API for ${exchangeName}`);
+          const allRates = await exchange.fetchFundingRates();
+          
+          // Filter to only requested symbols
+          symbolsArray.forEach(symbol => {
+            if (allRates[symbol]) {
+              const rate = allRates[symbol];
+              if (this.filterCriteria.minFundingRateAbs === -1 || 
+                  Math.abs(rate.fundingRate) >= this.filterCriteria.minFundingRateAbs) {
+                fundingRates[symbol] = rate;
+              }
+            }
+          });
+          
+          const elapsed = Date.now() - startTime;
+          console.log(`✅ ${exchangeName}: fetched ${Object.keys(fundingRates).length} funding rates in ${elapsed}ms (bulk)`);
+          
+          // Cache the result
+          this.cache.set(cacheKey, { data: fundingRates, timestamp: Date.now() });
+          return fundingRates;
+          
+        } catch (bulkError) {
+          console.log(`⚠️ Bulk fetch failed for ${exchangeName}, falling back to individual calls`);
+        }
+      }
+      
+      // Fallback to individual calls with optimizations
+      const batchSize = this.getOptimalBatchSize(exchangeName);
+      const delay = this.getOptimalDelay(exchangeName);
+      
       for (let i = 0; i < symbolsArray.length; i += batchSize) {
         const batch = symbolsArray.slice(i, i + batchSize);
         
+        // Process batch in parallel
         const promises = batch.map(async (symbol) => {
           try {
             const fundingRate = await exchange.fetchFundingRate(symbol);
@@ -162,6 +217,7 @@ export class ExchangeService {
             // Skip symbols that don't support funding rates
             return null;
           }
+          return null;
         });
         
         const results = await Promise.allSettled(promises);
@@ -172,14 +228,18 @@ export class ExchangeService {
           }
         });
         
-        // Small delay between batches
-        if (i + batchSize < symbolsArray.length) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
+        // Adaptive delay between batches
+        if (i + batchSize < symbolsArray.length && delay > 0) {
+          await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
       
+      const elapsed = Date.now() - startTime;
       const rateCount = Object.keys(fundingRates).length;
-      console.log(`✅ ${exchangeName}: fetched ${rateCount} funding rates`);
+      console.log(`✅ ${exchangeName}: fetched ${rateCount} funding rates in ${elapsed}ms (individual)`);
+      
+      // Cache the result
+      this.cache.set(cacheKey, { data: fundingRates, timestamp: Date.now() });
       
       return fundingRates;
       
@@ -189,7 +249,32 @@ export class ExchangeService {
     }
   }
 
+  private getOptimalBatchSize(exchangeName: string): number {
+    // Optimized batch sizes per exchange based on their rate limits
+    const batchSizes: { [key: string]: number } = {
+      'binance': 50,    // Binance has high rate limits
+      'okx': 30,        // OKX is moderately fast
+      'bitget': 20,     // Bitget is slower
+      'bybit': 40       // Bybit is quite fast
+    };
+    return batchSizes[exchangeName] || 20;
+  }
+
+  private getOptimalDelay(exchangeName: string): number {
+    // Optimized delays per exchange (in milliseconds)
+    const delays: { [key: string]: number } = {
+      'binance': 100,   // Very fast
+      'okx': 200,       // Fast
+      'bitget': 500,    // Slower
+      'bybit': 150      // Fast
+    };
+    return delays[exchangeName] || 300;
+  }
+
   public async fetchAllExchangeData(): Promise<{ tickers: { [exchange: string]: TickerData }, fundingRates: { [exchange: string]: FundingRateData } }> {
+    console.log('🚀 Starting parallel fetch of all exchange data...');
+    const startTime = Date.now();
+    
     const allTickers: { [exchange: string]: TickerData } = {};
     const allFundingRates: { [exchange: string]: FundingRateData } = {};
     
@@ -213,10 +298,19 @@ export class ExchangeService {
       }
     });
     
-    // Fetch funding rates for all exchanges in parallel
+    const tickerElapsed = Date.now() - startTime;
+    console.log(`✅ All tickers fetched in ${tickerElapsed}ms`);
+    
+    // Fetch funding rates for all exchanges in parallel (only for symbols that have tickers)
+    const fundingStartTime = Date.now();
     const fundingPromises = Object.keys(this.exchanges).map(async (name): Promise<[string, FundingRateData]> => {
       try {
         const symbols = allTickers[name] ? Object.keys(allTickers[name]) : [];
+        if (symbols.length === 0) {
+          console.log(`⚠️ No symbols found for ${name}, skipping funding rates`);
+          return [name, {}];
+        }
+        
         const fundingRates = await this.fetchFundingRates(name, symbols);
         return [name, fundingRates];
       } catch (error) {
@@ -233,6 +327,14 @@ export class ExchangeService {
         allFundingRates[name] = fundingRates;
       }
     });
+    
+    const fundingElapsed = Date.now() - fundingStartTime;
+    const totalElapsed = Date.now() - startTime;
+    
+    const totalTickers = Object.values(allTickers).reduce((sum, tickers) => sum + Object.keys(tickers).length, 0);
+    const totalFundingRates = Object.values(allFundingRates).reduce((sum, rates) => sum + Object.keys(rates).length, 0);
+    
+    console.log(`✅ All exchange data fetched: ${totalTickers} tickers, ${totalFundingRates} funding rates in ${totalElapsed}ms (funding: ${fundingElapsed}ms)`);
     
     return { tickers: allTickers, fundingRates: allFundingRates };
   }
@@ -265,5 +367,52 @@ export class ExchangeService {
     });
     
     return health;
+  }
+
+  // Cache management methods
+  public clearCache(): void {
+    this.cache.clear();
+    console.log('🧹 ExchangeService cache cleared');
+  }
+
+  public getCacheStats(): { size: number; keys: string[]; oldestEntry: number | null } {
+    const keys = Array.from(this.cache.keys());
+    let oldestTimestamp: number | null = null;
+    
+    for (const [key, value] of this.cache.entries()) {
+      if (value.timestamp && (!oldestTimestamp || value.timestamp < oldestTimestamp)) {
+        oldestTimestamp = value.timestamp;
+      }
+    }
+    
+    return {
+      size: this.cache.size,
+      keys,
+      oldestEntry: oldestTimestamp
+    };
+  }
+
+  // Method to warm up cache by pre-fetching data
+  public async warmUpCache(): Promise<void> {
+    console.log('🔥 Warming up ExchangeService cache...');
+    const startTime = Date.now();
+    
+    try {
+      // Pre-fetch all tickers in parallel
+      const tickerPromises = Object.keys(this.exchanges).map(name => 
+        this.fetchAllTickers(name).catch(error => {
+          console.error(`Failed to warm up tickers for ${name}:`, error.message);
+          return {};
+        })
+      );
+      
+      await Promise.all(tickerPromises);
+      
+      const elapsed = Date.now() - startTime;
+      console.log(`✅ Cache warmed up in ${elapsed}ms`);
+      
+    } catch (error) {
+      console.error('❌ Failed to warm up cache:', error);
+    }
   }
 } 

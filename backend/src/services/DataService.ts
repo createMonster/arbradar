@@ -33,9 +33,22 @@ export class DataService {
     // Start auto cleanup
     this.cleanupTimer = this.cacheService.startAutoCleanup();
     
+    // Warm up cache on startup
+    this.warmUpCaches();
+    
     // Start background updates if interval is specified
     if (config.updateInterval) {
       this.startBackgroundUpdates(config.updateInterval);
+    }
+  }
+
+  private async warmUpCaches(): Promise<void> {
+    try {
+      console.log('🔥 Warming up all caches...');
+      await this.exchangeService.warmUpCache();
+      console.log('✅ Cache warm-up completed');
+    } catch (error) {
+      console.error('❌ Cache warm-up failed:', error);
     }
   }
 
