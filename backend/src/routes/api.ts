@@ -4,26 +4,53 @@ const ccxt = require('ccxt');
 
 const router = Router();
 
-// Initialize exchanges directly (same as simple-server.js)
+// Initialize exchanges with proper settings for perpetual contracts
 const exchanges = {
-  binance: new ccxt.binance({ enableRateLimit: true }),
-  okx: new ccxt.okx({ enableRateLimit: true }),
-  bitget: new ccxt.bitget({ enableRateLimit: true }),
-  bybit: new ccxt.bybit({ enableRateLimit: true })
+  binance: new ccxt.binance({ 
+    enableRateLimit: true,
+    timeout: 30000,
+    options: {
+      defaultType: 'swap' // For perpetual contracts
+    }
+  }),
+  okx: new ccxt.okx({ 
+    enableRateLimit: true,
+    timeout: 30000,
+    options: {
+      defaultType: 'swap'
+    }
+  }),
+  bitget: new ccxt.bitget({ 
+    enableRateLimit: true,
+    timeout: 30000,
+    options: {
+      defaultType: 'swap'
+    }
+  }),
+  bybit: new ccxt.bybit({ 
+    enableRateLimit: true,
+    timeout: 30000,
+    options: {
+      defaultType: 'linear'
+    }
+  })
 };
 
-// Popular trading pairs (same as simple-server.js)
-const SYMBOLS = [
-  'BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'SOL/USDT', 'ADA/USDT',
-  'DOT/USDT', 'AVAX/USDT', 'MATIC/USDT', 'LINK/USDT', 'UNI/USDT',
-  'LTC/USDT', 'BCH/USDT', 'XRP/USDT', 'DOGE/USDT', 'ATOM/USDT'
-];
+// Filter criteria for meaningful trading pairs
+const FILTER_CRITERIA = {
+  minVolume: 100, // Minimum 24h volume in USDT  
+  minFundingRateAbs: -1, // Minimum funding rate (disabled with -1)
+  quoteAssets: ['USDT', 'USD', 'USDC'], // Only these quote assets
+  blacklistedSymbols: ['BULL', 'BEAR', 'UP', 'DOWN', 'HEDGE'] // Exclude leveraged tokens
+};
 
-// Cache for storing data (same as simple-server.js)
+// Cache for storing data
 let cache = {
+  allTickers: {} as any,
+  fundingRates: {} as any,
   spreads: [] as any[],
   lastUpdate: 0,
-  ttl: 5000 // 5 seconds
+  ttl: 30000 // 30 seconds cache
 };
 
 interface QueryParams {
@@ -31,152 +58,329 @@ interface QueryParams {
   minSpread?: string;
   exchanges?: string;
   search?: string;
+  limit?: string;
 }
 
-// Helper function to calculate spreads (from simple-server.js)
-function calculateSpreads(exchangeData: any) {
-  const spreads: any[] = [];
+// Helper function to check if symbol should be included
+function shouldIncludeSymbol(symbol: string, ticker: any): boolean {
+  // Check if it's a perpetual contract
+  if (!symbol.includes(':') && !symbol.includes('PERP')) return false;
   
-  // Group tickers by symbol
+  // Check quote asset
+  const quoteAsset = symbol.split('/')[1]?.split(':')[0];
+  if (!FILTER_CRITERIA.quoteAssets.includes(quoteAsset)) return false;
+  
+  // Check blacklisted symbols
+  if (FILTER_CRITERIA.blacklistedSymbols.some(bl => symbol.includes(bl))) return false;
+  
+  // Check minimum volume
+  if (ticker.quoteVolume && ticker.quoteVolume < FILTER_CRITERIA.minVolume) return false;
+  
+  return true;
+}
+
+// Fetch all available tickers from an exchange
+async function fetchAllTickers(exchangeName: string, exchange: any): Promise<any> {
+  try {
+    console.log(`📡 Fetching all tickers from ${exchangeName}...`);
+    
+    // Load markets first
+    await exchange.loadMarkets();
+    
+    // Get all tickers for perpetual contracts
+    const allTickers = await exchange.fetchTickers();
+    
+    // Filter meaningful tickers
+    const filteredTickers: any = {};
+    let totalCount = 0;
+    let filteredCount = 0;
+    
+    for (const [symbol, ticker] of Object.entries(allTickers)) {
+      totalCount++;
+      
+      if (shouldIncludeSymbol(symbol, ticker)) {
+        filteredTickers[symbol] = ticker;
+        filteredCount++;
+      }
+    }
+    
+    console.log(`✅ ${exchangeName}: ${filteredCount}/${totalCount} tickers after filtering`);
+    return filteredTickers;
+    
+  } catch (error: any) {
+    console.error(`❌ Error fetching tickers from ${exchangeName}:`, error.message);
+    return {};
+  }
+}
+
+// Fetch funding rates for perpetual contracts
+async function fetchFundingRates(exchangeName: string, exchange: any, symbols: string[]): Promise<any> {
+  try {
+    console.log(`💰 Fetching funding rates from ${exchangeName}...`);
+    
+    const fundingRates: any = {};
+    const symbolsArray = Array.isArray(symbols) ? symbols : Object.keys(symbols);
+    
+    // Fetch funding rates in batches to avoid rate limits
+    const batchSize = 10;
+    for (let i = 0; i < symbolsArray.length; i += batchSize) {
+      const batch = symbolsArray.slice(i, i + batchSize);
+      
+      const promises = batch.map(async (symbol) => {
+        try {
+          const fundingRate = await exchange.fetchFundingRate(symbol);
+          if (fundingRate && (FILTER_CRITERIA.minFundingRateAbs === -1 || Math.abs(fundingRate.fundingRate) >= FILTER_CRITERIA.minFundingRateAbs)) {
+            return [symbol, fundingRate];
+          }
+        } catch (error) {
+          // Skip symbols that don't support funding rates
+          return null;
+        }
+      });
+      
+      const results = await Promise.allSettled(promises);
+      results.forEach(result => {
+        if (result.status === 'fulfilled' && result.value) {
+          const [symbol, fundingRate] = result.value;
+          fundingRates[symbol] = fundingRate;
+        }
+      });
+      
+      // Small delay between batches
+      if (i + batchSize < symbolsArray.length) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    const rateCount = Object.keys(fundingRates).length;
+    console.log(`✅ ${exchangeName}: fetched ${rateCount} funding rates`);
+    
+    return fundingRates;
+    
+  } catch (error: any) {
+    console.error(`❌ Error fetching funding rates from ${exchangeName}:`, error.message);
+    return {};
+  }
+}
+
+// Calculate price spreads across exchanges
+function calculatePriceSpreads(allTickers: any, allFundingRates: any): any[] {
+  console.log('🔄 Calculating price spreads...');
+  
+  const spreads: any[] = [];
   const symbolMap: any = {};
   
-  Object.entries(exchangeData).forEach(([exchangeName, tickers]: [string, any]) => {
+  // Group tickers by symbol across exchanges
+  Object.entries(allTickers).forEach(([exchangeName, tickers]: [string, any]) => {
     Object.entries(tickers).forEach(([symbol, ticker]: [string, any]) => {
       if (!symbolMap[symbol]) {
         symbolMap[symbol] = {};
       }
-      symbolMap[symbol][exchangeName] = ticker;
+      symbolMap[symbol][exchangeName] = {
+        ticker,
+        fundingRate: allFundingRates[exchangeName]?.[symbol]
+      };
     });
   });
-
-  // Calculate spreads for symbols with data from multiple exchanges
-  Object.entries(symbolMap).forEach(([symbol, exchanges]: [string, any]) => {
-    const exchangeNames = Object.keys(exchanges);
+  
+  // Calculate spreads for symbols available on multiple exchanges
+  Object.entries(symbolMap).forEach(([symbol, exchangeData]: [string, any]) => {
+    const exchangeNames = Object.keys(exchangeData);
     
     if (exchangeNames.length >= 2) {
-      const prices = exchangeNames.map(name => exchanges[name].last);
-      const volumes = exchangeNames.map(name => exchanges[name].quoteVolume || 0);
+      const prices: any[] = [];
+      const exchangeInfo: any = {};
       
-      const minPrice = Math.min(...prices);
-      const maxPrice = Math.max(...prices);
-      const minIndex = prices.indexOf(minPrice);
-      const maxIndex = prices.indexOf(maxPrice);
-      
-      const spread = {
-        absolute: maxPrice - minPrice,
-        percentage: ((maxPrice - minPrice) / minPrice) * 100
-      };
-      
-      // Only include if spread is meaningful (> 0.001%)
-      if (spread.percentage > 0.001) {
-        const exchangeData: any = {};
-        exchangeNames.forEach((name, i) => {
-          exchangeData[name] = {
-            price: prices[i],
-            volume: volumes[i],
-            lastUpdated: Date.now()
+      exchangeNames.forEach(exchangeName => {
+        const data = exchangeData[exchangeName];
+        if (data.ticker && data.ticker.last) {
+          prices.push({
+            price: data.ticker.last,
+            exchange: exchangeName,
+            volume: data.ticker.quoteVolume || 0,
+            fundingRate: data.fundingRate?.fundingRate || 0,
+            fundingTime: data.fundingRate?.fundingTimestamp || null
+          });
+          
+          exchangeInfo[exchangeName] = {
+            price: data.ticker.last,
+            volume: data.ticker.quoteVolume || 0,
+            bid: data.ticker.bid,
+            ask: data.ticker.ask,
+            fundingRate: data.fundingRate?.fundingRate || 0,
+            fundingTime: data.fundingRate?.fundingTimestamp || null,
+            nextFundingTime: data.fundingRate?.fundingTimestamp ? 
+              data.fundingRate.fundingTimestamp + (8 * 60 * 60 * 1000) : null
           };
-        });
-
-        spreads.push({
-          symbol,
-          exchanges: exchangeData,
-          spread: {
-            ...spread,
-            bestBuy: exchangeNames[minIndex],
-            bestSell: exchangeNames[maxIndex]
-          },
-          fundingRate: Math.random() > 0.7 ? {
-            rate: (Math.random() - 0.5) * 0.002,
-            nextTime: Date.now() + Math.random() * 8 * 60 * 60 * 1000,
-            exchange: exchangeNames[Math.floor(Math.random() * exchangeNames.length)]
-          } : undefined
-        });
-      }
-    }
-  });
-
-  return spreads.sort((a, b) => b.spread.percentage - a.spread.percentage);
-}
-
-// Fetch data from all exchanges (from simple-server.js)
-async function fetchAllData() {
-  console.log('🔄 Fetching data from all exchanges...');
-  
-  const exchangeData: any = {};
-  
-  // Fetch from all exchanges in parallel
-  const promises = Object.entries(exchanges).map(async ([name, exchange]: [string, any]) => {
-    try {
-      console.log(`📡 Fetching from ${name}...`);
-      const tickers: any = {};
-      
-      // Fetch symbols in smaller batches to avoid rate limits
-      const symbolPromises = SYMBOLS.map(async (symbol) => {
-        try {
-          const ticker = await exchange.fetchTicker(symbol);
-          if (ticker && ticker.last && ticker.quoteVolume) {
-            tickers[symbol] = ticker;
-          }
-        } catch (error) {
-          console.log(`⚠️  ${name}: ${symbol} not available`);
         }
       });
       
-      await Promise.allSettled(symbolPromises);
-      
-      const tickerCount = Object.keys(tickers).length;
-      console.log(`✅ ${name}: fetched ${tickerCount} tickers`);
-      
-      return [name, tickers];
-    } catch (error: any) {
-      console.error(`❌ Error fetching from ${name}:`, error.message);
-      return [name, {}];
+      if (prices.length >= 2) {
+        prices.sort((a, b) => a.price - b.price);
+        
+        const minPrice = prices[0].price;
+        const maxPrice = prices[prices.length - 1].price;
+        const minExchange = prices[0].exchange;
+        const maxExchange = prices[prices.length - 1].exchange;
+        
+        const absoluteSpread = maxPrice - minPrice;
+        const percentageSpread = (absoluteSpread / minPrice) * 100;
+        
+        // Calculate funding rate spread
+        const fundingRateSpread = Math.abs(
+          (exchangeInfo[maxExchange]?.fundingRate || 0) - 
+          (exchangeInfo[minExchange]?.fundingRate || 0)
+        ) * 100;
+        
+        // Only include meaningful spreads
+        if (percentageSpread > 0.01) { // > 0.01%
+          spreads.push({
+            symbol,
+            exchanges: exchangeInfo,
+            priceSpread: {
+              absolute: absoluteSpread,
+              percentage: percentageSpread,
+              buyExchange: minExchange,
+              sellExchange: maxExchange,
+              buyPrice: minPrice,
+              sellPrice: maxPrice
+            },
+            fundingSpread: {
+              percentage: fundingRateSpread,
+              buyExchangeRate: exchangeInfo[minExchange]?.fundingRate || 0,
+              sellExchangeRate: exchangeInfo[maxExchange]?.fundingRate || 0
+            },
+            arbitrageOpportunity: {
+              type: 'price_arbitrage',
+              profit: percentageSpread - 0.1, // Assuming 0.1% total fees
+              confidence: prices.length >= 3 ? 'high' : 'medium'
+            },
+            lastUpdated: Date.now(),
+            // Legacy fields for backward compatibility
+            spread: {
+              absolute: absoluteSpread,
+              percentage: percentageSpread,
+              bestBuy: minExchange,
+              bestSell: maxExchange
+            }
+          });
+        }
+      }
     }
   });
-
-  const results = await Promise.allSettled(promises);
   
-  results.forEach((result) => {
-    if (result.status === 'fulfilled') {
-      const [name, tickers] = result.value;
-      exchangeData[name] = tickers;
-    }
-  });
-
-  return exchangeData;
+  // Sort by price spread percentage descending
+  spreads.sort((a, b) => b.priceSpread.percentage - a.priceSpread.percentage);
+  
+  console.log(`🎯 Found ${spreads.length} arbitrage opportunities`);
+  if (spreads.length > 0) {
+    console.log(`🏆 Best: ${spreads[0].symbol} - ${spreads[0].priceSpread.percentage.toFixed(4)}%`);
+  }
+  
+  return spreads;
 }
 
-// Main data processing function (from simple-server.js)
-async function updateSpreads() {
+// Main data fetching and processing function
+async function updateAllData(): Promise<any[]> {
   try {
-    const exchangeData = await fetchAllData();
-    const spreads = calculateSpreads(exchangeData);
+    console.log('🔄 Starting comprehensive data update...');
     
-    console.log(`🎯 Found ${spreads.length} arbitrage opportunities`);
+    const allTickers: any = {};
+    const allFundingRates: any = {};
     
-    if (spreads.length > 0) {
-      console.log(`🏆 Best: ${spreads[0].symbol} - ${spreads[0].spread.percentage.toFixed(4)}%`);
-    }
+    // Fetch all tickers from all exchanges in parallel
+    const tickerPromises = Object.entries(exchanges).map(async ([name, exchange]: [string, any]) => {
+      const tickers = await fetchAllTickers(name, exchange);
+      return [name, tickers];
+    });
+    
+    const tickerResults = await Promise.allSettled(tickerPromises);
+    
+    tickerResults.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        const [name, tickers] = result.value;
+        allTickers[name] = tickers;
+      }
+    });
+    
+    // Fetch funding rates for all exchanges in parallel
+    const fundingPromises = Object.entries(exchanges).map(async ([name, exchange]: [string, any]) => {
+      const symbols = allTickers[name] ? Object.keys(allTickers[name]) : [];
+      const fundingRates = await fetchFundingRates(name, exchange, symbols);
+      return [name, fundingRates];
+    });
+    
+    const fundingResults = await Promise.allSettled(fundingPromises);
+    
+    fundingResults.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        const [name, fundingRates] = result.value;
+        allFundingRates[name] = fundingRates;
+      }
+    });
+    
+    // Calculate spreads
+    const spreads = calculatePriceSpreads(allTickers, allFundingRates);
     
     // Update cache
     cache = {
+      allTickers,
+      fundingRates: allFundingRates,
       spreads,
       lastUpdate: Date.now(),
-      ttl: 5000
+      ttl: 30000
     };
     
+    console.log('✅ Data update completed successfully');
     return spreads;
+    
   } catch (error) {
-    console.error('❌ Error updating spreads:', error);
+    console.error('❌ Error updating data:', error);
     return cache.spreads || [];
   }
 }
 
 // Apply filters to spreads data
-// TODO: Implement filters
-function applyFilters(spreads: any[], filters: QueryParams) {
-  return spreads;
+function applyFilters(spreads: any[], filters: QueryParams): any[] {
+  let filtered = [...spreads];
+  
+  // Filter by minimum spread
+  if (filters.minSpread) {
+    const minSpread = parseFloat(filters.minSpread);
+    filtered = filtered.filter(s => s.priceSpread.percentage >= minSpread);
+  }
+  
+  // Filter by minimum volume
+  if (filters.minVolume) {
+    const minVolume = parseFloat(filters.minVolume);
+    filtered = filtered.filter(s => 
+      Object.values(s.exchanges).some((ex: any) => ex.volume >= minVolume)
+    );
+  }
+  
+  // Filter by exchanges
+  if (filters.exchanges) {
+    const targetExchanges = filters.exchanges.split(',');
+    filtered = filtered.filter(s => 
+      targetExchanges.some(ex => s.exchanges[ex])
+    );
+  }
+  
+  // Search filter
+  if (filters.search) {
+    const searchTerm = filters.search.toLowerCase();
+    filtered = filtered.filter(s => 
+      s.symbol.toLowerCase().includes(searchTerm)
+    );
+  }
+  
+  // Limit results
+  if (filters.limit) {
+    const limit = parseInt(filters.limit);
+    filtered = filtered.slice(0, limit);
+  }
+  
+  return filtered;
 }
 
 // GET /api/spreads - Main endpoint for arbitrage opportunities
@@ -197,12 +401,14 @@ router.get('/spreads', async (req: Request<{}, {}, {}, QueryParams>, res: Respon
         data: filteredData,
         timestamp: now,
         count: filteredData.length,
-        cached: true
+        total: cache.spreads.length,
+        cached: true,
+        filters: req.query
       });
     }
     
     // Fetch fresh data
-    const spreads = await updateSpreads();
+    const spreads = await updateAllData();
     
     // Apply filters
     const filteredData = applyFilters(spreads, req.query);
@@ -214,7 +420,9 @@ router.get('/spreads', async (req: Request<{}, {}, {}, QueryParams>, res: Respon
       data: filteredData,
       timestamp: now,
       count: filteredData.length,
-      cached: false
+      total: spreads.length,
+      cached: false,
+      filters: req.query
     });
     
   } catch (error) {
@@ -230,51 +438,39 @@ router.get('/spreads', async (req: Request<{}, {}, {}, QueryParams>, res: Respon
 // GET /api/tickers - Raw ticker data from exchanges
 router.get('/tickers', async (req: Request<{}, {}, {}, { exchanges?: string }>, res: Response) => {
   try {
-    const { exchanges: exchangesParam } = req.query;
+    const exchangeParam = req.query.exchanges?.toLowerCase();
     
-    if (exchangesParam) {
-      // Fetch from specific exchanges
-      const exchangeNames = exchangesParam.split(',');
-      const results: any = {};
-      
-      for (const exchangeName of exchangeNames) {
-        try {
-          const exchange = (exchanges as any)[exchangeName];
-          if (exchange) {
-            const tickers: any = {};
-            
-            for (const symbol of SYMBOLS) {
-              try {
-                const ticker = await exchange.fetchTicker(symbol);
-                if (ticker && ticker.last && ticker.quoteVolume) {
-                  tickers[symbol] = ticker;
-                }
-              } catch (error) {
-                // Symbol not available on this exchange
-              }
-            }
-            
-            results[exchangeName] = tickers;
-          }
-        } catch (error) {
-          results[exchangeName] = {};
-        }
-      }
-      
-      res.json({
-        success: true,
-        data: results,
-        timestamp: Date.now()
-      });
-    } else {
-      // Fetch from all exchanges
-      const allTickers = await fetchAllData();
-      res.json({
-        success: true,
-        data: allTickers,
-        timestamp: Date.now()
+    if (exchangeParam && !exchanges[exchangeParam as keyof typeof exchanges]) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid exchange',
+        supportedExchanges: Object.keys(exchanges)
       });
     }
+    
+    const now = Date.now();
+    if (cache.allTickers && (now - cache.lastUpdate) < cache.ttl) {
+      const data = exchangeParam ? { [exchangeParam]: cache.allTickers[exchangeParam] } : cache.allTickers;
+      
+      return res.json({
+        success: true,
+        data,
+        timestamp: now,
+        cached: true
+      });
+    }
+    
+    // If no cached data, trigger update
+    await updateAllData();
+    
+    const data = exchangeParam ? { [exchangeParam]: cache.allTickers[exchangeParam] } : cache.allTickers;
+    
+    res.json({
+      success: true,
+      data,
+      timestamp: now,
+      cached: false
+    });
     
   } catch (error) {
     console.error('❌ Error in /api/tickers:', error);
@@ -291,14 +487,20 @@ router.get('/health', async (req: Request, res: Response) => {
   try {
     const exchangeStatus: any = {};
     Object.keys(exchanges).forEach(name => {
-      exchangeStatus[name] = true; // Simplified health check
+      exchangeStatus[name] = true;
     });
     
     res.json({
       success: true,
       timestamp: Date.now(),
       exchanges: exchangeStatus,
-      uptime: process.uptime()
+      uptime: process.uptime(),
+      cacheStatus: {
+        lastUpdate: cache.lastUpdate,
+        spreadCount: cache.spreads.length,
+        tickerCount: Object.keys(cache.allTickers).length,
+        isCached: (Date.now() - cache.lastUpdate) < cache.ttl
+      }
     });
     
   } catch (error) {
@@ -313,30 +515,38 @@ router.get('/health', async (req: Request, res: Response) => {
 // GET /api/funding-rates - Funding rates for futures contracts
 router.get('/funding-rates', async (req: Request<{}, {}, {}, { exchanges?: string }>, res: Response) => {
   try {
-    const { exchanges: exchangesParam } = req.query;
-    const results: any = {};
+    const exchangeParam = req.query.exchanges?.toLowerCase();
     
-    const exchangesToCheck = exchangesParam 
-      ? exchangesParam.split(',') 
-      : ['binance', 'okx', 'bitget', 'bybit'];
-    
-    for (const exchangeName of exchangesToCheck) {
-      try {
-        const exchange = (exchanges as any)[exchangeName];
-        if (exchange && exchange.has['fetchFundingRates']) {
-          results[exchangeName] = await exchange.fetchFundingRates();
-        } else {
-          results[exchangeName] = [];
-        }
-      } catch (error) {
-        results[exchangeName] = [];
-      }
+    if (exchangeParam && !exchanges[exchangeParam as keyof typeof exchanges]) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid exchange',
+        supportedExchanges: Object.keys(exchanges)
+      });
     }
+    
+    const now = Date.now();
+    if (cache.fundingRates && (now - cache.lastUpdate) < cache.ttl) {
+      const data = exchangeParam ? { [exchangeParam]: cache.fundingRates[exchangeParam] } : cache.fundingRates;
+      
+      return res.json({
+        success: true,
+        data,
+        timestamp: now,
+        cached: true
+      });
+    }
+    
+    // If no cached data, trigger update
+    await updateAllData();
+    
+    const data = exchangeParam ? { [exchangeParam]: cache.fundingRates[exchangeParam] } : cache.fundingRates;
     
     res.json({
       success: true,
-      data: results,
-      timestamp: Date.now()
+      data,
+      timestamp: now,
+      cached: false
     });
     
   } catch (error) {
@@ -349,16 +559,18 @@ router.get('/funding-rates', async (req: Request<{}, {}, {}, { exchanges?: strin
   }
 });
 
-// Start background data fetching (similar to simple-server.js)
+// Background data updates
 setInterval(async () => {
   if (cache.lastUpdate === 0 || (Date.now() - cache.lastUpdate) > cache.ttl) {
-    await updateSpreads();
+    console.log('⏰ Background update triggered');
+    await updateAllData();
   }
-}, 30000); // Update every 30 seconds
+}, 60000); // Check every minute
 
 // Initial data fetch
-setTimeout(() => {
-  updateSpreads();
-}, 2000);
+setTimeout(async () => {
+  console.log('🔄 Starting initial data fetch...');
+  await updateAllData();
+}, 3000);
 
 export default router; 

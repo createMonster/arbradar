@@ -1,4 +1,4 @@
-import { TickerData, SupportedExchange, SUPPORTED_SYMBOLS } from '../types';
+const ccxt = require('ccxt');
 
 // Simple interface for exchange instances to avoid CCXT type issues
 interface SimpleExchange {
@@ -8,200 +8,262 @@ interface SimpleExchange {
   has: any; // More flexible to handle CCXT's has object
 }
 
+export interface ExchangeConfig {
+  enableRateLimit: boolean;
+  timeout: number;
+  options: {
+    defaultType: string;
+  };
+}
+
+export interface FilterCriteria {
+  minVolume: number;
+  minFundingRateAbs: number;
+  quoteAssets: string[];
+  blacklistedSymbols: string[];
+}
+
+export interface TickerData {
+  [symbol: string]: any;
+}
+
+export interface FundingRateData {
+  [symbol: string]: any;
+}
+
 export class ExchangeService {
-  private exchanges: Map<SupportedExchange, SimpleExchange> = new Map();
-  private cache: Map<string, TickerData[]> = new Map();
+  private exchanges: { [key: string]: any } = {};
+  private filterCriteria: FilterCriteria;
+  private cache: Map<string, any> = new Map();
   private readonly CACHE_TTL = 5000; // 5 seconds
 
-  constructor() {
+  constructor(filterCriteria: FilterCriteria) {
+    this.filterCriteria = filterCriteria;
     this.initializeExchanges();
   }
 
-  private async initializeExchanges() {
-    try {
-      // Dynamic import of CCXT to handle ES module issues
-      const ccxt = await import('ccxt');
-      
-      const exchangeConfigs = [
-        { name: 'binance', class: ccxt.binance },
-        { name: 'okx', class: ccxt.okx },
-        { name: 'bitget', class: ccxt.bitget },
-        { name: 'bybit', class: ccxt.bybit }
-      ];
-
-      // Initialize exchanges in parallel
-      const initPromises = exchangeConfigs.map(async ({ name, class: ExchangeClass }) => {
-        try {
-          const exchange = new ExchangeClass({
-            sandbox: false,
-            enableRateLimit: true,
-            timeout: 10000,
-          });
-          this.exchanges.set(name as SupportedExchange, exchange);
-          console.log(`✅ Initialized ${name} exchange`);
-          return { name, success: true };
-        } catch (error) {
-          console.error(`❌ Failed to initialize ${name}:`, error);
-          return { name, success: false, error };
-        }
-      });
-
-      await Promise.allSettled(initPromises);
-    } catch (error) {
-      console.error('❌ Failed to import CCXT:', error);
-      // Initialize without CCXT for demo mode
-      this.initializeDemoMode();
-    }
-  }
-
-  private initializeDemoMode() {
-    console.log('🔄 Initializing demo mode without CCXT...');
-    // Create mock exchanges for demo
-    const mockExchange: SimpleExchange = {
-      fetchTicker: async (symbol: string) => ({
-        symbol,
-        last: Math.random() * 100000 + 1000,
-        quoteVolume: Math.random() * 10000000 + 100000,
-        timestamp: Date.now()
-      }),
-      fetchTickers: async () => ({}),
-      has: { fetchFundingRates: false }
+  private initializeExchanges(): void {
+    const exchangeConfigs: { [key: string]: ExchangeConfig } = {
+      binance: {
+        enableRateLimit: true,
+        timeout: 30000,
+        options: { defaultType: 'swap' }
+      },
+      okx: {
+        enableRateLimit: true,
+        timeout: 30000,
+        options: { defaultType: 'swap' }
+      },
+      bitget: {
+        enableRateLimit: true,
+        timeout: 30000,
+        options: { defaultType: 'swap' }
+      },
+      bybit: {
+        enableRateLimit: true,
+        timeout: 30000,
+        options: { defaultType: 'linear' }
+      }
     };
 
-    ['binance', 'okx', 'bitget', 'bybit'].forEach(name => {
-      this.exchanges.set(name as SupportedExchange, mockExchange);
+    Object.entries(exchangeConfigs).forEach(([name, config]) => {
+      this.exchanges[name] = new ccxt[name](config);
     });
-    console.log('✅ Demo mode initialized');
   }
 
-  async fetchTickers(exchangeName: SupportedExchange): Promise<TickerData[]> {
-    const cacheKey = `${exchangeName}_tickers`;
-    const cached = this.cache.get(cacheKey);
+  public getExchangeNames(): string[] {
+    return Object.keys(this.exchanges);
+  }
+
+  public getExchange(name: string): any {
+    return this.exchanges[name];
+  }
+
+  private shouldIncludeSymbol(symbol: string, ticker: any): boolean {
+    // Check if it's a perpetual contract
+    if (!symbol.includes(':') && !symbol.includes('PERP')) return false;
     
-    if (cached && Date.now() - cached[0]?.timestamp < this.CACHE_TTL) {
-      console.log(`🔄 Using cached data for ${exchangeName} (${cached.length} tickers)`);
-      return cached;
-    }
+    // Check quote asset
+    const quoteAsset = symbol.split('/')[1]?.split(':')[0];
+    if (!this.filterCriteria.quoteAssets.includes(quoteAsset)) return false;
+    
+    // Check blacklisted symbols
+    if (this.filterCriteria.blacklistedSymbols.some(bl => symbol.includes(bl))) return false;
+    
+    // Check minimum volume
+    if (ticker.quoteVolume && ticker.quoteVolume < this.filterCriteria.minVolume) return false;
+    
+    return true;
+  }
 
-    const exchange = this.exchanges.get(exchangeName);
-    if (!exchange) {
-      throw new Error(`Exchange ${exchangeName} not initialized`);
-    }
-
+  public async fetchAllTickers(exchangeName: string): Promise<TickerData> {
     try {
-      console.log(`🔄 Fetching tickers from ${exchangeName}...`);
+      console.log(`📡 Fetching all tickers from ${exchangeName}...`);
       
-      // Fetch all symbols in parallel instead of sequentially
-      const tickerPromises = SUPPORTED_SYMBOLS.map(async (symbol): Promise<TickerData | null> => {
-        try {
-          const ticker = await exchange.fetchTicker(symbol);
-          
-          if (ticker && ticker.last && ticker.quoteVolume) {
-            return {
-              symbol,
-              price: ticker.last,
-              volume: ticker.quoteVolume,
-              timestamp: Date.now()
-            };
-          }
-          return null;
-        } catch (symbolError) {
-          console.warn(`⚠️  ${exchangeName}: ${symbol} not available`);
-          return null;
+      const exchange = this.exchanges[exchangeName];
+      if (!exchange) {
+        throw new Error(`Exchange ${exchangeName} not found`);
+      }
+
+      // Load markets first
+      await exchange.loadMarkets();
+      
+      // Get all tickers for perpetual contracts
+      const allTickers = await exchange.fetchTickers();
+      
+      // Filter meaningful tickers
+      const filteredTickers: TickerData = {};
+      let totalCount = 0;
+      let filteredCount = 0;
+      
+      for (const [symbol, ticker] of Object.entries(allTickers)) {
+        totalCount++;
+        
+        if (this.shouldIncludeSymbol(symbol, ticker)) {
+          filteredTickers[symbol] = ticker;
+          filteredCount++;
         }
-      });
-
-      // Wait for all ticker fetches to complete
-      const tickerResults = await Promise.allSettled(tickerPromises);
-      
-      // Filter out failed/null results
-      const tickers: TickerData[] = tickerResults
-        .filter((result): result is PromiseFulfilledResult<TickerData> => 
-          result.status === 'fulfilled' && result.value !== null
-        )
-        .map(result => result.value);
-
-      console.log(`✅ Fetched ${tickers.length} tickers from ${exchangeName}`);
-      
-      // Cache the results
-      if (tickers.length > 0) {
-        this.cache.set(cacheKey, tickers);
       }
       
-      return tickers;
+      console.log(`✅ ${exchangeName}: ${filteredCount}/${totalCount} tickers after filtering`);
+      return filteredTickers;
       
-    } catch (error) {
-      console.error(`❌ Error fetching from ${exchangeName}:`, error);
-      return cached || [];
+    } catch (error: any) {
+      console.error(`❌ Error fetching tickers from ${exchangeName}:`, error.message);
+      throw new Error(`Failed to fetch tickers from ${exchangeName}: ${error.message}`);
     }
   }
 
-  async fetchAllTickers(): Promise<Record<SupportedExchange, TickerData[]>> {
-    console.log('🔄 Fetching data from all exchanges in parallel...');
+  public async fetchFundingRates(exchangeName: string, symbols: string[]): Promise<FundingRateData> {
+    try {
+      console.log(`💰 Fetching funding rates from ${exchangeName}...`);
+      
+      const exchange = this.exchanges[exchangeName];
+      if (!exchange) {
+        throw new Error(`Exchange ${exchangeName} not found`);
+      }
+
+      const fundingRates: FundingRateData = {};
+      const symbolsArray = Array.isArray(symbols) ? symbols : Object.keys(symbols);
+      
+      // Fetch funding rates in batches to avoid rate limits
+      const batchSize = 10;
+      for (let i = 0; i < symbolsArray.length; i += batchSize) {
+        const batch = symbolsArray.slice(i, i + batchSize);
+        
+        const promises = batch.map(async (symbol) => {
+          try {
+            const fundingRate = await exchange.fetchFundingRate(symbol);
+            if (fundingRate && (this.filterCriteria.minFundingRateAbs === -1 || 
+                Math.abs(fundingRate.fundingRate) >= this.filterCriteria.minFundingRateAbs)) {
+              return [symbol, fundingRate];
+            }
+          } catch (error) {
+            // Skip symbols that don't support funding rates
+            return null;
+          }
+        });
+        
+        const results = await Promise.allSettled(promises);
+        results.forEach(result => {
+          if (result.status === 'fulfilled' && result.value) {
+            const [symbol, fundingRate] = result.value;
+            fundingRates[symbol] = fundingRate;
+          }
+        });
+        
+        // Small delay between batches
+        if (i + batchSize < symbolsArray.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      const rateCount = Object.keys(fundingRates).length;
+      console.log(`✅ ${exchangeName}: fetched ${rateCount} funding rates`);
+      
+      return fundingRates;
+      
+    } catch (error: any) {
+      console.error(`❌ Error fetching funding rates from ${exchangeName}:`, error.message);
+      throw new Error(`Failed to fetch funding rates from ${exchangeName}: ${error.message}`);
+    }
+  }
+
+  public async fetchAllExchangeData(): Promise<{ tickers: { [exchange: string]: TickerData }, fundingRates: { [exchange: string]: FundingRateData } }> {
+    const allTickers: { [exchange: string]: TickerData } = {};
+    const allFundingRates: { [exchange: string]: FundingRateData } = {};
     
-    // Get all available exchanges
-    const availableExchanges = Array.from(this.exchanges.keys());
-    console.log(`📊 Available exchanges: ${availableExchanges.join(', ')}`);
-    
-    // Fetch from all exchanges in parallel
-    const fetchPromises = availableExchanges.map(async (exchangeName): Promise<[string, TickerData[]]> => {
+    // Fetch all tickers from all exchanges in parallel
+    const tickerPromises = Object.keys(this.exchanges).map(async (name): Promise<[string, TickerData]> => {
       try {
-        const tickers = await this.fetchTickers(exchangeName);
-        return [exchangeName, tickers];
+        const tickers = await this.fetchAllTickers(name);
+        return [name, tickers];
       } catch (error) {
-        console.error(`❌ Failed to fetch from ${exchangeName}:`, error);
-        return [exchangeName, []];
+        console.error(`Failed to fetch tickers from ${name}:`, error);
+        return [name, {}];
       }
     });
-
-    // Wait for all fetches to complete
-    const results = await Promise.allSettled(fetchPromises);
     
-    // Build results object
-    const allTickers: Record<string, TickerData[]> = {};
-    let totalSymbols = 0;
+    const tickerResults = await Promise.allSettled(tickerPromises);
+    
+    tickerResults.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        const [name, tickers] = result.value;
+        allTickers[name] = tickers;
+      }
+    });
+    
+    // Fetch funding rates for all exchanges in parallel
+    const fundingPromises = Object.keys(this.exchanges).map(async (name): Promise<[string, FundingRateData]> => {
+      try {
+        const symbols = allTickers[name] ? Object.keys(allTickers[name]) : [];
+        const fundingRates = await this.fetchFundingRates(name, symbols);
+        return [name, fundingRates];
+      } catch (error) {
+        console.error(`Failed to fetch funding rates from ${name}:`, error);
+        return [name, {}];
+      }
+    });
+    
+    const fundingResults = await Promise.allSettled(fundingPromises);
+    
+    fundingResults.forEach((result) => {
+      if (result.status === 'fulfilled') {
+        const [name, fundingRates] = result.value;
+        allFundingRates[name] = fundingRates;
+      }
+    });
+    
+    return { tickers: allTickers, fundingRates: allFundingRates };
+  }
+
+  public async healthCheck(): Promise<{ [exchange: string]: boolean }> {
+    const health: { [exchange: string]: boolean } = {};
+    
+    const promises = Object.keys(this.exchanges).map(async (name): Promise<[string, boolean]> => {
+      try {
+        const exchange = this.exchanges[name];
+        // Simple ping test
+        await exchange.loadMarkets();
+        return [name, true];
+      } catch (error) {
+        console.error(`Health check failed for ${name}:`, error);
+        return [name, false];
+      }
+    });
+    
+    const results = await Promise.allSettled(promises);
     
     results.forEach((result) => {
       if (result.status === 'fulfilled') {
-        const [exchangeName, tickers] = result.value;
-        allTickers[exchangeName] = tickers;
-        totalSymbols += tickers.length;
-        console.log(`📈 ${exchangeName}: ${tickers.length} symbols`);
+        const [name, status] = result.value;
+        health[name] = status;
+      } else {
+        // If promise was rejected, mark as unhealthy
+        health['unknown'] = false;
       }
     });
     
-    console.log(`✅ Total symbols fetched: ${totalSymbols}`);
-    return allTickers as Record<SupportedExchange, TickerData[]>;
-  }
-
-  async fetchFundingRates(exchangeName: SupportedExchange): Promise<any[]> {
-    const exchange = this.exchanges.get(exchangeName);
-    if (!exchange || !exchange.has?.fetchFundingRates) {
-      return [];
-    }
-
-    try {
-      const fundingRates = await exchange.fetchFundingRates?.();
-      return Object.values(fundingRates || {}).filter((rate: any) => 
-        SUPPORTED_SYMBOLS.some(symbol => 
-          symbol.replace('/', '') === rate.symbol?.replace('/', '')
-        )
-      );
-    } catch (error) {
-      console.error(`❌ Error fetching funding rates from ${exchangeName}:`, error);
-      return [];
-    }
-  }
-
-  isHealthy(exchangeName: SupportedExchange): boolean {
-    return this.exchanges.has(exchangeName);
-  }
-
-  getHealthStatus(): Record<SupportedExchange, boolean> {
-    const status: Record<string, boolean> = {};
-    ['binance', 'okx', 'bitget', 'bybit'].forEach(exchangeName => {
-      status[exchangeName] = this.isHealthy(exchangeName as SupportedExchange);
-    });
-    return status as Record<SupportedExchange, boolean>;
+    return health;
   }
 } 
