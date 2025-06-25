@@ -1,12 +1,13 @@
 const ccxt = require('ccxt');
-
-// Centralized cache configuration
-export const CACHE_CONFIG = {
-  TICKERS_TTL: 10000,         // 10 seconds for price data (frequent updates needed)
-  FUNDING_RATES_TTL: 600000,  // 10 minutes for funding rates (stable data)
-  PROCESSED_DATA_TTL: 10000,  // 10 seconds to match price data freshness (arbitrage needs real-time data)
-  HEALTH_CHECK_TTL: 60000     // 1 minute for health checks
-};
+import { 
+  CACHE_CONFIG, 
+  EXCHANGE_CONFIGS, 
+  EXCHANGE_PERFORMANCE,
+  EXCHANGE_FEATURES,
+  getExchangeConfig,
+  validateExchangeConfig,
+  type ExchangeConfig 
+} from '../config/exchanges';
 
 // Simple interface for exchange instances to avoid CCXT type issues
 interface SimpleExchange {
@@ -16,13 +17,7 @@ interface SimpleExchange {
   has: any; // More flexible to handle CCXT's has object
 }
 
-export interface ExchangeConfig {
-  enableRateLimit: boolean;
-  timeout: number;
-  options: {
-    defaultType: string;
-  };
-}
+// ExchangeConfig is now imported from ../config/exchanges
 
 export interface FilterCriteria {
   minVolume: number;
@@ -50,32 +45,33 @@ export class ExchangeService {
   }
 
   private initializeExchanges(): void {
-    const exchangeConfigs: { [key: string]: ExchangeConfig } = {
-      binance: {
-        enableRateLimit: true,
-        timeout: 30000,
-        options: { defaultType: 'swap' }
-      },
-      okx: {
-        enableRateLimit: true,
-        timeout: 30000,
-        options: { defaultType: 'swap' }
-      },
-      bitget: {
-        enableRateLimit: true,
-        timeout: 30000,
-        options: { defaultType: 'swap' }
-      },
-      bybit: {
-        enableRateLimit: true,
-        timeout: 30000,
-        options: { defaultType: 'linear' }
-      }
-    };
+    Object.entries(EXCHANGE_CONFIGS).forEach(([name, baseConfig]) => {
+      try {
+        const config = getExchangeConfig(name);
+        
+        // Validate configuration
+        if (!validateExchangeConfig(name, config)) {
+          console.error(`❌ Invalid configuration for exchange: ${name}`);
+          return;
+        }
 
-    Object.entries(exchangeConfigs).forEach(([name, config]) => {
-      this.exchanges[name] = new ccxt[name](config);
+        // Special handling for Hyperliquid (DEX with wallet-based auth)
+        if (name === 'hyperliquid') {
+          if (!config.walletAddress || !config.privateKey) {
+            console.warn(`⚠️ Skipping Hyperliquid - missing wallet credentials`);
+            return;
+          }
+        }
+
+        this.exchanges[name] = new ccxt[name](config);
+        console.log(`✅ Initialized exchange: ${name}`);
+        
+      } catch (error: any) {
+        console.error(`❌ Failed to initialize exchange ${name}:`, error.message);
+      }
     });
+
+    console.log(`🔄 Initialized ${Object.keys(this.exchanges).length} exchanges`);
   }
 
   public getExchangeNames(): string[] {
@@ -125,7 +121,12 @@ export class ExchangeService {
       await exchange.loadMarkets();
       
       // Get all tickers for perpetual contracts
+      const fetchStart = Date.now();
+      
       const allTickers = await exchange.fetchTickers();
+      
+      const fetchElapsed = Date.now() - fetchStart;
+      console.log(`🔍 ${exchangeName} fetchTickers API call took ${fetchElapsed}ms`);
       
       // Filter meaningful tickers
       const filteredTickers: TickerData = {};
@@ -257,25 +258,11 @@ export class ExchangeService {
   }
 
   private getOptimalBatchSize(exchangeName: string): number {
-    // Optimized batch sizes per exchange based on their rate limits
-    const batchSizes: { [key: string]: number } = {
-      'binance': 50,    // Binance has high rate limits
-      'okx': 30,        // OKX is moderately fast
-      'bitget': 20,     // Bitget is slower
-      'bybit': 40       // Bybit is quite fast
-    };
-    return batchSizes[exchangeName] || 20;
+    return EXCHANGE_PERFORMANCE.batchSizes[exchangeName as keyof typeof EXCHANGE_PERFORMANCE.batchSizes] || 20;
   }
 
   private getOptimalDelay(exchangeName: string): number {
-    // Optimized delays per exchange (in milliseconds)
-    const delays: { [key: string]: number } = {
-      'binance': 100,   // Very fast
-      'okx': 200,       // Fast
-      'bitget': 500,    // Slower
-      'bybit': 150      // Fast
-    };
-    return delays[exchangeName] || 300;
+    return EXCHANGE_PERFORMANCE.delays[exchangeName as keyof typeof EXCHANGE_PERFORMANCE.delays] || 300;
   }
 
   public async fetchAllExchangeData(): Promise<{ tickers: { [exchange: string]: TickerData }, fundingRates: { [exchange: string]: FundingRateData } }> {

@@ -1,9 +1,14 @@
 import { Router, Request, Response } from 'express';
 import { DataService, DataServiceConfig } from '../services/DataService';
 import { FilterOptions } from '../services/ArbitrageService';
-import { CACHE_CONFIG } from '../services/ExchangeService';
+import { CACHE_CONFIG, EXCHANGE_CONFIGS } from '../config/exchanges';
 
 const router = Router();
+
+// Helper function to get supported exchanges
+const getSupportedExchanges = (): string[] => {
+  return Object.keys(EXCHANGE_CONFIGS);
+};
 
 // Configuration for the data service
 const dataServiceConfig: DataServiceConfig = {
@@ -171,11 +176,11 @@ router.get('/tickers', async (req: Request, res: Response) => {
     const forceRefresh = req.query.refresh === 'true';
     
     // Validate exchange name if provided
-    if (exchangeName && !['binance', 'okx', 'bitget', 'bybit'].includes(exchangeName.toLowerCase())) {
+    if (exchangeName && !getSupportedExchanges().includes(exchangeName.toLowerCase())) {
       return res.status(400).json({
         success: false,
         error: 'Invalid exchange',
-        supportedExchanges: ['binance', 'okx', 'bitget', 'bybit']
+        supportedExchanges: getSupportedExchanges()
       });
     }
     
@@ -194,11 +199,11 @@ router.get('/funding-rates', async (req: Request, res: Response) => {
     const forceRefresh = req.query.refresh === 'true';
     
     // Validate exchange name if provided
-    if (exchangeName && !['binance', 'okx', 'bitget', 'bybit'].includes(exchangeName.toLowerCase())) {
+    if (exchangeName && !getSupportedExchanges().includes(exchangeName.toLowerCase())) {
       return res.status(400).json({
         success: false,
         error: 'Invalid exchange',
-        supportedExchanges: ['binance', 'okx', 'bitget', 'bybit']
+        supportedExchanges: getSupportedExchanges()
       });
     }
     

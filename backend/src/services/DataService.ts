@@ -1,4 +1,5 @@
-import { ExchangeService, FilterCriteria, CACHE_CONFIG } from './ExchangeService';
+import { ExchangeService, FilterCriteria } from './ExchangeService';
+import { CACHE_CONFIG } from '../config/exchanges';
 import { ArbitrageService, SpreadData, FilterOptions } from './ArbitrageService';
 import { CacheService } from './CacheService';
 
