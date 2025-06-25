@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { DataService, DataServiceConfig } from '../services/DataService';
 import { FilterOptions } from '../services/ArbitrageService';
+import { CACHE_CONFIG } from '../services/ExchangeService';
 
 const router = Router();
 
@@ -12,7 +13,7 @@ const dataServiceConfig: DataServiceConfig = {
     quoteAssets: ['USDT', 'USD', 'USDC'],
     blacklistedSymbols: ['BULL', 'BEAR', 'UP', 'DOWN', 'HEDGE']
   },
-  cacheTtl: 30000, // 30 seconds
+  cacheTtl: CACHE_CONFIG.PROCESSED_DATA_TTL, // 10s TTL for processed arbitrage data
   updateInterval: 60000 // 1 minute background updates
 };
 

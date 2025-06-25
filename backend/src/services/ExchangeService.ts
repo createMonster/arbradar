@@ -1,5 +1,13 @@
 const ccxt = require('ccxt');
 
+// Centralized cache configuration
+export const CACHE_CONFIG = {
+  TICKERS_TTL: 10000,         // 10 seconds for price data (frequent updates needed)
+  FUNDING_RATES_TTL: 600000,  // 10 minutes for funding rates (stable data)
+  PROCESSED_DATA_TTL: 10000,  // 10 seconds to match price data freshness (arbitrage needs real-time data)
+  HEALTH_CHECK_TTL: 60000     // 1 minute for health checks
+};
+
 // Simple interface for exchange instances to avoid CCXT type issues
 interface SimpleExchange {
   fetchTicker(symbol: string): Promise<any>;
@@ -35,7 +43,6 @@ export class ExchangeService {
   private exchanges: { [key: string]: any } = {};
   private filterCriteria: FilterCriteria;
   private cache: Map<string, any> = new Map();
-  private readonly CACHE_TTL = 600000; // 10 minutes
 
   constructor(filterCriteria: FilterCriteria) {
     this.filterCriteria = filterCriteria;
@@ -109,8 +116,8 @@ export class ExchangeService {
       // Check cache first
       const cacheKey = `tickers_${exchangeName}`;
       const cached = this.cache.get(cacheKey);
-      if (cached && (Date.now() - cached.timestamp) < this.CACHE_TTL) {
-        console.log(`📦 Using cached tickers for ${exchangeName}`);
+      if (cached && (Date.now() - cached.timestamp) < CACHE_CONFIG.TICKERS_TTL) {
+        console.log(`📦 Using cached tickers for ${exchangeName} (10s cache)`);
         return cached.data;
       }
 
@@ -161,8 +168,8 @@ export class ExchangeService {
       // Check cache first
       const cacheKey = `funding_rates_${exchangeName}`;
       const cached = this.cache.get(cacheKey);
-      if (cached && (Date.now() - cached.timestamp) < this.CACHE_TTL) {
-        console.log(`📦 Using cached funding rates for ${exchangeName}`);
+      if (cached && (Date.now() - cached.timestamp) < CACHE_CONFIG.FUNDING_RATES_TTL) {
+        console.log(`📦 Using cached funding rates for ${exchangeName} (10min cache)`);
         return cached.data;
       }
 

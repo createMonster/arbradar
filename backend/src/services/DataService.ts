@@ -1,4 +1,4 @@
-import { ExchangeService, FilterCriteria } from './ExchangeService';
+import { ExchangeService, FilterCriteria, CACHE_CONFIG } from './ExchangeService';
 import { ArbitrageService, SpreadData, FilterOptions } from './ArbitrageService';
 import { CacheService } from './CacheService';
 
@@ -28,7 +28,8 @@ export class DataService {
   constructor(private config: DataServiceConfig) {
     this.exchangeService = new ExchangeService(config.filterCriteria);
     this.arbitrageService = new ArbitrageService();
-    this.cacheService = new CacheService(config.cacheTtl || 30000);
+    // Use PROCESSED_DATA_TTL which matches TICKERS_TTL for consistency
+    this.cacheService = new CacheService(config.cacheTtl || CACHE_CONFIG.PROCESSED_DATA_TTL);
     
     // Start auto cleanup
     this.cleanupTimer = this.cacheService.startAutoCleanup();
