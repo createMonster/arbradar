@@ -82,11 +82,17 @@ interface SpreadsResponse {
 
 interface PriceRow {
   symbol: string;            // Trading pair (e.g., "BTC/USDT:USDT")
+  marketType: 'spot' | 'perp'; // Market type detection
   exchanges: {
     [exchangeName: string]: {
       price: number;         // Current price
       volume: number;        // 24h volume in quote currency
       lastUpdated: number;   // Unix timestamp
+      fundingRate?: {        // ✅ Enhanced: Per-exchange funding rate (perp only)
+        rate: number;        // Funding rate (e.g., 0.0001 = 0.01%)
+        nextTime: number;    // Next funding time (Unix timestamp)
+        dataAge: number;     // Data freshness in seconds
+      };
     };
   };
   spread: {
@@ -95,10 +101,17 @@ interface PriceRow {
     bestBuy: string;         // Exchange with lowest price
     bestSell: string;        // Exchange with highest price
   };
-  fundingRate?: {
+  fundingRate?: {            // Legacy format (kept for backward compatibility)
     rate: number;            // Funding rate (e.g., 0.001 = 0.1%)
     nextTime: number;        // Next funding time (Unix timestamp)
     exchange: string;        // Exchange providing the rate
+  };
+  fundingRates?: {           // ✅ Enhanced: Complete funding rates by exchange
+    [exchangeName: string]: {
+      rate: number;          // Funding rate
+      nextTime: number;      // Next funding time
+      isAvailable: boolean;  // Whether data is available
+    };
   };
 }
 ```
@@ -108,13 +121,76 @@ interface PriceRow {
 GET /api/spreads?minSpread=0.5&minVolume=1000&exchanges=binance,okx&limit=20
 ```
 
-**Example Response**:
+**Example Response (Perpetual Contract)**:
 ```json
 {
   "success": true,
   "data": [
     {
       "symbol": "BTC/USDT:USDT",
+      "marketType": "perp",
+      "exchanges": {
+        "binance": {
+          "price": 43250.5,
+          "volume": 125000000,
+          "lastUpdated": 1703123456789,
+          "fundingRate": {
+            "rate": 0.0001,
+            "nextTime": 1703152800000,
+            "dataAge": 15
+          }
+        },
+        "okx": {
+          "price": 43180.2,
+          "volume": 98000000,
+          "lastUpdated": 1703123456789,
+          "fundingRate": {
+            "rate": 0.00008,
+            "nextTime": 1703152800000,
+            "dataAge": 12
+          }
+        }
+      },
+      "spread": {
+        "absolute": 70.3,
+        "percentage": 0.163,
+        "bestBuy": "okx",
+        "bestSell": "binance"
+      },
+      "fundingRate": {
+        "rate": 0.0001,
+        "nextTime": 1703152800000,
+        "exchange": "binance"
+      },
+      "fundingRates": {
+        "binance": {
+          "rate": 0.0001,
+          "nextTime": 1703152800000,
+          "isAvailable": true
+        },
+        "okx": {
+          "rate": 0.00008,
+          "nextTime": 1703152800000,
+          "isAvailable": true
+        }
+      }
+    }
+  ],
+  "count": 1,
+  "total": 45,
+  "timestamp": 1703123456789,
+  "cached": false
+}
+```
+
+**Example Response (Spot Market)**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "symbol": "BTC/USDT",
+      "marketType": "spot",
       "exchanges": {
         "binance": {
           "price": 43250.5,
@@ -132,11 +208,6 @@ GET /api/spreads?minSpread=0.5&minVolume=1000&exchanges=binance,okx&limit=20
         "percentage": 0.163,
         "bestBuy": "okx",
         "bestSell": "binance"
-      },
-      "fundingRate": {
-        "rate": 0.0001,
-        "nextTime": 1703152800000,
-        "exchange": "binance"
       }
     }
   ],
@@ -370,6 +441,41 @@ type ErrorType =
   | 'Endpoint not found';        // 404 errors
 ```
 
+## Enhanced Funding Rate Support
+
+### Market Type Detection
+
+The API now automatically detects market type based on symbol format:
+
+- **Perpetual Contracts**: Symbols containing `:` (e.g., `BTC/USDT:USDT`) or `PERP`/`PERPETUAL`
+- **Spot Markets**: All other symbol formats (e.g., `BTC/USDT`)
+
+### Funding Rate Data Structure
+
+For perpetual contracts, funding rate data is provided in multiple formats for maximum compatibility:
+
+1. **Per-Exchange Funding Rates** (Recommended): In `exchanges[].fundingRate`
+2. **Complete Funding Rates Object**: In `fundingRates` field
+3. **Legacy Single Rate**: In `fundingRate` field (backward compatibility)
+
+### Enhanced Features
+
+- ✅ **Market Type Identification**: Automatic spot/perp detection
+- ✅ **Per-Exchange Funding Rates**: Show rates for both buy and sell exchanges
+- ✅ **Data Freshness Indicators**: `dataAge` field shows data staleness
+- ✅ **Funding Rate Availability**: `isAvailable` flag indicates data presence
+- ✅ **Backward Compatibility**: Legacy `fundingRate` field preserved
+
+### Funding Rate Analysis
+
+With per-exchange funding rates, clients can now perform complete arbitrage analysis:
+
+```typescript
+// Calculate total arbitrage cost including funding rates
+const totalCost = priceSpread - (buyExchangeFundingRate - sellExchangeFundingRate);
+const netProfit = totalCost - tradingFees;
+```
+
 ## Data Flow
 
 ### Typical Frontend Request Flow
@@ -379,9 +485,10 @@ type ErrorType =
 3. **Backend** checks cache for recent data
 4. If cache miss or refresh requested:
    - **Backend** fetches data from exchange APIs
-   - **Backend** processes and transforms data
+   - **Backend** processes and transforms data with market type detection
+   - **Backend** enhances with per-exchange funding rates (for perp contracts)
    - **Backend** caches results
-5. **Backend** returns formatted JSON response
+5. **Backend** returns formatted JSON response with enhanced data structure
 6. **Frontend** receives and processes data
 
 ### Caching Strategy
@@ -494,4 +601,23 @@ The backend-frontend communication uses a standard REST API with JSON data excha
 - **Monitoring**: Health checks and comprehensive logging
 - **Flexibility**: Market type separation and exchange filtering
 
-For AI and automated systems, focus on the structured response formats and error handling patterns. For human developers, pay attention to the query parameters and caching strategies for optimal performance. 
+### Recent Enhancements (v2.0)
+
+- ✅ **Enhanced Funding Rate Support**: Per-exchange funding rates for complete arbitrage analysis
+- ✅ **Market Type Detection**: Automatic spot/perpetual contract identification
+- ✅ **Improved Data Structure**: Multiple funding rate formats for maximum compatibility
+- ✅ **Backward Compatibility**: Legacy API structure preserved during transition
+- ✅ **Data Freshness Tracking**: Real-time indicators of data staleness
+
+### Migration Guide
+
+**For existing clients**: The API maintains backward compatibility. Legacy fields are preserved:
+- `fundingRate` field continues to work as before
+- Existing `exchanges` structure unchanged for core data
+
+**For new implementations**: Use the enhanced structure:
+- Check `marketType` field for spot/perp detection
+- Use `exchanges[].fundingRate` for per-exchange funding rates
+- Utilize `fundingRates` object for complete funding rate analysis
+
+For AI and automated systems, focus on the enhanced data structures for funding rate analysis. For human developers, the new market type detection and per-exchange funding rates enable more sophisticated arbitrage strategies. 

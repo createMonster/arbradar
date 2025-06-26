@@ -3,6 +3,7 @@ import { DataService, DataServiceConfig } from '../services/DataService';
 import { FilterOptions } from '../services/ArbitrageService';
 import { CACHE_CONFIG, EXCHANGE_CONFIGS, getSpotExchanges, getPerpExchanges, getExchangesByMarketType } from '../config/exchanges';
 import type { MarketType } from '../config/exchanges';
+import { getMarketType } from '../types';
 
 const router: Router = express.Router();
 
@@ -124,39 +125,76 @@ router.get('/spreads', validateQueryParams, async (req: express.Request, res: ex
     
     // Transform SpreadData[] to PriceRow[] for frontend compatibility
     const transformedData = result.data.map((spread: any) => {
-      // Transform exchanges data to match frontend expectations
+      // Determine market type from symbol
+      const marketType = getMarketType(spread.symbol);
+      const isPerp = marketType === 'perp';
+
+      // Transform exchanges data to match enhanced frontend expectations
       const exchangesData: any = {};
+      const fundingRatesData: any = {};
+      let legacyFundingRate = undefined;
+
       Object.entries(spread.exchanges).forEach(([exchangeName, data]: [string, any]) => {
+        // Enhanced exchange data with funding rate per exchange
         exchangesData[exchangeName] = {
           price: data.price,
           volume: data.volume,
           lastUpdated: spread.lastUpdated || Date.now()
         };
+
+        // Add funding rate data per exchange for perp contracts
+        if (isPerp && data.fundingRate !== undefined && data.fundingRate !== 0) {
+          exchangesData[exchangeName].fundingRate = {
+            rate: data.fundingRate,
+            nextTime: data.nextFundingTime || Date.now() + (8 * 60 * 60 * 1000),
+            dataAge: Math.floor((Date.now() - (spread.lastUpdated || Date.now())) / 1000)
+          };
+
+          // Also populate the enhanced fundingRates object
+          fundingRatesData[exchangeName] = {
+            rate: data.fundingRate,
+            nextTime: data.nextFundingTime || Date.now() + (8 * 60 * 60 * 1000),
+            isAvailable: true
+          };
+        }
       });
 
-      // Create funding rate data if available
-      let fundingRate = undefined;
-      const fundingRates = Object.values(spread.exchanges).filter((ex: any) => ex.fundingRate !== 0);
-      if (fundingRates.length > 0) {
-        const bestFundingEx = fundingRates[0] as any;
-        fundingRate = {
-          rate: bestFundingEx.fundingRate,
-          nextTime: bestFundingEx.nextFundingTime || Date.now() + (8 * 60 * 60 * 1000),
-          exchange: spread.priceSpread.buyExchange
-        };
+      // Create legacy funding rate data for backward compatibility
+      if (isPerp) {
+        const fundingRates = Object.values(spread.exchanges).filter((ex: any) => ex.fundingRate !== 0);
+        if (fundingRates.length > 0) {
+          const bestFundingEx = fundingRates[0] as any;
+          legacyFundingRate = {
+            rate: bestFundingEx.fundingRate,
+            nextTime: bestFundingEx.nextFundingTime || Date.now() + (8 * 60 * 60 * 1000),
+            exchange: spread.priceSpread.buyExchange
+          };
+        }
       }
 
-      return {
+      const enhancedPriceRow: any = {
         symbol: spread.symbol,
+        marketType: marketType,
         exchanges: exchangesData,
         spread: {
           absolute: spread.spread.absolute,
           percentage: spread.spread.percentage,
           bestBuy: spread.spread.bestBuy,
           bestSell: spread.spread.bestSell
-        },
-        fundingRate
+        }
       };
+
+      // Add funding rate data only for perp contracts
+      if (isPerp) {
+        if (legacyFundingRate) {
+          enhancedPriceRow.fundingRate = legacyFundingRate;
+        }
+        if (Object.keys(fundingRatesData).length > 0) {
+          enhancedPriceRow.fundingRates = fundingRatesData;
+        }
+      }
+
+      return enhancedPriceRow;
     });
     
     console.log(`✅ Returning ${result.count} arbitrage opportunities`);
@@ -297,6 +335,78 @@ router.post('/refresh', async (req: express.Request, res: express.Response) => {
         timestamp: result.timestamp,
         error: result.error
       }
+    });
+    
+  } catch (error) {
+    handleServiceError(error, res);
+  }
+});
+
+// GET /api/exchanges - Exchange information with market type support
+router.get('/exchanges', (req: express.Request, res: express.Response) => {
+  try {
+    const allExchanges = getSupportedExchanges();
+    const spotExchanges = getSpotExchanges();
+    const perpExchanges = getPerpExchanges();
+    
+    // Calculate capabilities for each exchange
+    const capabilities: any = {};
+    allExchanges.forEach(exchange => {
+      capabilities[exchange] = {
+        supportsSpot: spotExchanges.includes(exchange),
+        supportsPerp: perpExchanges.includes(exchange),
+        marketTypes: []
+      };
+      
+      if (spotExchanges.includes(exchange)) {
+        capabilities[exchange].marketTypes.push('spot');
+      }
+      if (perpExchanges.includes(exchange)) {
+        capabilities[exchange].marketTypes.push('perp');
+      }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        all: allExchanges,
+        spot: spotExchanges,
+        perp: perpExchanges,
+        spotAndPerp: allExchanges.filter(ex => spotExchanges.includes(ex) && perpExchanges.includes(ex)),
+        perpOnly: perpExchanges.filter(ex => !spotExchanges.includes(ex)),
+        capabilities
+      },
+      timestamp: Date.now()
+    });
+    
+  } catch (error) {
+    handleServiceError(error, res);
+  }
+});
+
+// GET /api/exchanges/market/:marketType - Get exchanges by market type
+router.get('/exchanges/market/:marketType', (req: express.Request, res: express.Response) => {
+  try {
+    const marketType = req.params.marketType as MarketType;
+    
+    if (!['spot', 'perp'].includes(marketType)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid market type',
+        message: 'Market type must be either "spot" or "perp"'
+      });
+    }
+    
+    const exchanges = getExchangesByType(marketType);
+    
+    res.json({
+      success: true,
+      data: {
+        marketType,
+        exchanges,
+        count: exchanges.length
+      },
+      timestamp: Date.now()
     });
     
   } catch (error) {

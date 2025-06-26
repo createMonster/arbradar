@@ -2,6 +2,12 @@ export interface ExchangeData {
   price: number;
   volume: number;
   lastUpdated: number;
+  // Enhanced funding rate data per exchange
+  fundingRate?: {
+    rate: number;
+    nextTime: number;
+    dataAge?: number;
+  };
 }
 
 export interface SpreadData {
@@ -19,11 +25,20 @@ export interface FundingRate {
 
 export interface PriceRow {
   symbol: string;
+  marketType?: 'spot' | 'perp';  // Enhanced with market type
   exchanges: {
     [key: string]: ExchangeData;
   };
   spread: SpreadData;
-  fundingRate?: FundingRate;
+  fundingRate?: FundingRate;  // Keep for backward compatibility
+  // Enhanced funding rates structure
+  fundingRates?: {
+    [exchangeName: string]: {
+      rate: number;
+      nextTime: number;
+      isAvailable: boolean;
+    };
+  };
 }
 
 export interface TickerData {
@@ -41,6 +56,14 @@ export interface ExchangeConfig {
 
 // Market types for exchanges
 export type MarketType = 'spot' | 'perp';
+
+// Helper function to determine market type from symbol
+export function getMarketType(symbol: string): MarketType {
+  // Perpetual contracts typically have formats like:
+  // BTC/USDT:USDT (with colon)
+  // BTC-PERP, BTC/USD:PERPETUAL
+  return symbol.includes(':') || symbol.includes('PERP') || symbol.includes('PERPETUAL') ? 'perp' : 'spot';
+}
 
 // Updated supported exchanges based on exchanges.md
 export const SUPPORTED_EXCHANGES = ['binance', 'okx', 'bitget', 'bybit', 'gate', 'hyperliquid'] as const;
