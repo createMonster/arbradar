@@ -1,4 +1,15 @@
 // Exchange configuration definitions
+
+// Market types that exchanges can support
+export type MarketType = 'spot' | 'perp';
+
+// Exchange capabilities based on exchanges.md
+export interface ExchangeCapabilities {
+  supportsSpot: boolean;
+  supportsPerp: boolean;
+  marketTypes: MarketType[];
+}
+
 export interface ExchangeConfig {
   enableRateLimit: boolean;
   timeout: number;
@@ -8,10 +19,49 @@ export interface ExchangeConfig {
     recvWindow?: number;  // Binance-specific option
     [key: string]: any;   // Allow other exchange-specific options
   };
+  // Exchange capabilities
+  capabilities: ExchangeCapabilities;
   // Hyperliquid-specific fields
   walletAddress?: string;
   privateKey?: string;
 }
+
+// Exchange market support based on exchanges.md
+export const EXCHANGE_MARKET_SUPPORT: { [key: string]: ExchangeCapabilities } = {
+  // Spot and Perp exchanges
+  binance: {
+    supportsSpot: true,
+    supportsPerp: true,
+    marketTypes: ['spot', 'perp']
+  },
+  bitget: {
+    supportsSpot: true,
+    supportsPerp: true,
+    marketTypes: ['spot', 'perp']
+  },
+  bybit: {
+    supportsSpot: true,
+    supportsPerp: true,
+    marketTypes: ['spot', 'perp']
+  },
+  gate: {
+    supportsSpot: true,
+    supportsPerp: true,
+    marketTypes: ['spot', 'perp']
+  },
+  okx: {
+    supportsSpot: true,
+    supportsPerp: true,
+    marketTypes: ['spot', 'perp']
+  },
+  
+  // Perp only exchanges
+  hyperliquid: {
+    supportsSpot: false,
+    supportsPerp: true,
+    marketTypes: ['perp']
+  }
+};
 
 // Centralized cache configuration
 export const CACHE_CONFIG = {
@@ -29,7 +79,8 @@ export const EXCHANGE_CONFIGS: { [key: string]: ExchangeConfig } = {
     options: { 
       defaultType: 'swap',
       recvWindow: 10000    // Binance-specific: increase receive window
-    }
+    },
+    capabilities: EXCHANGE_MARKET_SUPPORT.binance
   },
   
   okx: {
@@ -37,7 +88,8 @@ export const EXCHANGE_CONFIGS: { [key: string]: ExchangeConfig } = {
     timeout: 30000,
     options: { 
       defaultType: 'swap' 
-    }
+    },
+    capabilities: EXCHANGE_MARKET_SUPPORT.okx
   },
   
   bitget: {
@@ -45,7 +97,8 @@ export const EXCHANGE_CONFIGS: { [key: string]: ExchangeConfig } = {
     timeout: 30000,
     options: { 
       defaultType: 'swap' 
-    }
+    },
+    capabilities: EXCHANGE_MARKET_SUPPORT.bitget
   },
   
   bybit: {
@@ -53,7 +106,17 @@ export const EXCHANGE_CONFIGS: { [key: string]: ExchangeConfig } = {
     timeout: 30000,
     options: { 
       defaultType: 'linear'  // Bybit uses 'linear' for perpetual futures
-    }
+    },
+    capabilities: EXCHANGE_MARKET_SUPPORT.bybit
+  },
+
+  gate: {
+    enableRateLimit: true,
+    timeout: 30000,
+    options: { 
+      defaultType: 'swap'
+    },
+    capabilities: EXCHANGE_MARKET_SUPPORT.gate
   },
   
   hyperliquid: {
@@ -63,7 +126,8 @@ export const EXCHANGE_CONFIGS: { [key: string]: ExchangeConfig } = {
     options: { 
       defaultType: 'swap',
       // Hyperliquid-specific options can be added here
-    }
+    },
+    capabilities: EXCHANGE_MARKET_SUPPORT.hyperliquid
     // Note: walletAddress and privateKey should be set via environment variables
     // walletAddress: process.env.HYPERLIQUID_WALLET_ADDRESS,
     // privateKey: process.env.HYPERLIQUID_PRIVATE_KEY
@@ -78,6 +142,7 @@ export const EXCHANGE_PERFORMANCE = {
     'okx': 30,          // OKX is moderately fast
     'bitget': 20,       // Bitget is slower
     'bybit': 40,        // Bybit is quite fast
+    'gate': 25,         // Gate.io moderate performance
     'hyperliquid': 10   // Conservative for DEX
   },
   
@@ -87,17 +152,22 @@ export const EXCHANGE_PERFORMANCE = {
     'okx': 200,         // Fast
     'bitget': 500,      // Slower
     'bybit': 150,       // Fast
+    'gate': 300,        // Moderate
     'hyperliquid': 200  // Moderate for DEX
   }
 };
 
 // Exchange-specific features and capabilities
 export const EXCHANGE_FEATURES = {
-  supportsBulkFundingRates: ['binance', 'okx', 'bitget'],
-  supportsWebSocket: ['binance', 'okx', 'bitget', 'bybit', 'hyperliquid'],
+  supportsBulkFundingRates: ['binance', 'okx', 'bitget', 'gate'],
+  supportsWebSocket: ['binance', 'okx', 'bitget', 'bybit', 'gate', 'hyperliquid'],
   requiresPassphrase: ['okx'],
   requiresWallet: ['hyperliquid'],
-  isDecentralized: ['hyperliquid']
+  isDecentralized: ['hyperliquid'],
+  
+  // Market type support
+  supportsSpotAndPerp: ['binance', 'bitget', 'bybit', 'gate', 'okx'],
+  supportsPerpOnly: ['hyperliquid']
 };
 
 // Helper function to get exchange config with environment variable overrides
@@ -144,4 +214,24 @@ export function validateExchangeConfig(exchangeName: string, config: ExchangeCon
   }
 
   return true;
+}
+
+// Helper functions for market type filtering
+export function getExchangesByMarketType(marketType: MarketType): string[] {
+  return Object.entries(EXCHANGE_MARKET_SUPPORT)
+    .filter(([_, capabilities]) => capabilities.marketTypes.includes(marketType))
+    .map(([exchangeName, _]) => exchangeName);
+}
+
+export function getSpotExchanges(): string[] {
+  return getExchangesByMarketType('spot');
+}
+
+export function getPerpExchanges(): string[] {
+  return getExchangesByMarketType('perp');
+}
+
+export function exchangeSupportsMarketType(exchangeName: string, marketType: MarketType): boolean {
+  const capabilities = EXCHANGE_MARKET_SUPPORT[exchangeName];
+  return capabilities ? capabilities.marketTypes.includes(marketType) : false;
 } 

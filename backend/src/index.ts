@@ -1,8 +1,8 @@
-import express from 'express';
+import express, { Application } from 'express';
 import cors from 'cors';
 import apiRoutes from './routes/api-refactored';
 
-const app = express();
+const app: Application = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware

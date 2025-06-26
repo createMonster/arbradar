@@ -6,7 +6,12 @@ import {
   EXCHANGE_FEATURES,
   getExchangeConfig,
   validateExchangeConfig,
-  type ExchangeConfig 
+  getExchangesByMarketType,
+  getSpotExchanges,
+  getPerpExchanges,
+  exchangeSupportsMarketType,
+  type ExchangeConfig,
+  type MarketType 
 } from '../config/exchanges';
 
 // Simple interface for exchange instances to avoid CCXT type issues
@@ -80,6 +85,34 @@ export class ExchangeService {
 
   public getExchange(name: string): any {
     return this.exchanges[name];
+  }
+
+  // New methods for market type handling
+  public getExchangesByMarketType(marketType: MarketType): string[] {
+    return getExchangesByMarketType(marketType).filter(name => this.exchanges[name]);
+  }
+
+  public getSpotExchanges(): string[] {
+    return getSpotExchanges().filter(name => this.exchanges[name]);
+  }
+
+  public getPerpExchanges(): string[] {
+    return getPerpExchanges().filter(name => this.exchanges[name]);
+  }
+
+  public exchangeSupportsMarketType(exchangeName: string, marketType: MarketType): boolean {
+    return this.exchanges[exchangeName] && exchangeSupportsMarketType(exchangeName, marketType);
+  }
+
+  public getExchangeCapabilities(exchangeName: string): { supportsSpot: boolean; supportsPerp: boolean } | null {
+    const config = EXCHANGE_CONFIGS[exchangeName];
+    if (!config || !this.exchanges[exchangeName]) {
+      return null;
+    }
+    return {
+      supportsSpot: config.capabilities.supportsSpot,
+      supportsPerp: config.capabilities.supportsPerp
+    };
   }
 
   private shouldIncludeSymbol(symbol: string, ticker: any): boolean {

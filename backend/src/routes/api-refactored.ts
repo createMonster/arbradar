@@ -1,13 +1,19 @@
-import { Router, Request, Response } from 'express';
+import express, { Router } from 'express';
 import { DataService, DataServiceConfig } from '../services/DataService';
 import { FilterOptions } from '../services/ArbitrageService';
-import { CACHE_CONFIG, EXCHANGE_CONFIGS } from '../config/exchanges';
+import { CACHE_CONFIG, EXCHANGE_CONFIGS, getSpotExchanges, getPerpExchanges, getExchangesByMarketType } from '../config/exchanges';
+import type { MarketType } from '../config/exchanges';
 
-const router = Router();
+const router: Router = express.Router();
 
 // Helper function to get supported exchanges
 const getSupportedExchanges = (): string[] => {
   return Object.keys(EXCHANGE_CONFIGS);
+};
+
+// Helper function to get exchanges by market type
+const getExchangesByType = (marketType: MarketType): string[] => {
+  return getExchangesByMarketType(marketType);
 };
 
 // Configuration for the data service
@@ -26,7 +32,7 @@ const dataServiceConfig: DataServiceConfig = {
 const dataService = new DataService(dataServiceConfig);
 
 // Input validation middleware
-const validateQueryParams = (req: Request, res: Response, next: any) => {
+const validateQueryParams = (req: express.Request, res: express.Response, next: any) => {
   const { minSpread, minVolume, limit } = req.query;
   
   if (minSpread && isNaN(Number(minSpread))) {
@@ -57,7 +63,7 @@ const validateQueryParams = (req: Request, res: Response, next: any) => {
 };
 
 // Error handling middleware
-const handleServiceError = (error: any, res: Response) => {
+const handleServiceError = (error: any, res: express.Response) => {
   console.error('❌ Service error:', error);
   
   if (error.name === 'ValidationError') {
@@ -84,7 +90,7 @@ const handleServiceError = (error: any, res: Response) => {
 };
 
 // GET /api/spreads - Main endpoint for arbitrage opportunities
-router.get('/spreads', validateQueryParams, async (req: Request, res: Response) => {
+router.get('/spreads', validateQueryParams, async (req: express.Request, res: express.Response) => {
   try {
     console.log('🔄 API call to /spreads');
     
@@ -170,7 +176,7 @@ router.get('/spreads', validateQueryParams, async (req: Request, res: Response) 
 });
 
 // GET /api/tickers - Raw ticker data from exchanges
-router.get('/tickers', async (req: Request, res: Response) => {
+router.get('/tickers', async (req: express.Request, res: express.Response) => {
   try {
     const exchangeName = req.query.exchanges as string;
     const forceRefresh = req.query.refresh === 'true';
@@ -193,7 +199,7 @@ router.get('/tickers', async (req: Request, res: Response) => {
 });
 
 // GET /api/funding-rates - Funding rates for futures contracts
-router.get('/funding-rates', async (req: Request, res: Response) => {
+router.get('/funding-rates', async (req: express.Request, res: express.Response) => {
   try {
     const exchangeName = req.query.exchanges as string;
     const forceRefresh = req.query.refresh === 'true';
@@ -216,7 +222,7 @@ router.get('/funding-rates', async (req: Request, res: Response) => {
 });
 
 // GET /api/health - Health check endpoint
-router.get('/health', async (req: Request, res: Response) => {
+router.get('/health', async (req: express.Request, res: express.Response) => {
   try {
     const health = await dataService.getHealthStatus();
     
@@ -234,7 +240,7 @@ router.get('/health', async (req: Request, res: Response) => {
 });
 
 // GET /api/statistics - Arbitrage statistics
-router.get('/statistics', async (req: Request, res: Response) => {
+router.get('/statistics', async (req: express.Request, res: express.Response) => {
   try {
     const stats = dataService.getArbitrageStatistics();
     
@@ -250,7 +256,7 @@ router.get('/statistics', async (req: Request, res: Response) => {
 });
 
 // GET /api/top-opportunities - Top arbitrage opportunities
-router.get('/top-opportunities', async (req: Request, res: Response) => {
+router.get('/top-opportunities', async (req: express.Request, res: express.Response) => {
   try {
     const count = req.query.count ? parseInt(req.query.count as string) : 10;
     
@@ -277,7 +283,7 @@ router.get('/top-opportunities', async (req: Request, res: Response) => {
 });
 
 // POST /api/refresh - Force data refresh
-router.post('/refresh', async (req: Request, res: Response) => {
+router.post('/refresh', async (req: express.Request, res: express.Response) => {
   try {
     console.log('🔄 Forced refresh requested');
     
@@ -299,7 +305,7 @@ router.post('/refresh', async (req: Request, res: Response) => {
 });
 
 // GET /api/cache/info - Cache information
-router.get('/cache/info', (req: Request, res: Response) => {
+router.get('/cache/info', (req: express.Request, res: express.Response) => {
   try {
     const cacheInfo = dataService.getCacheInfo();
     
@@ -315,7 +321,7 @@ router.get('/cache/info', (req: Request, res: Response) => {
 });
 
 // DELETE /api/cache - Clear cache
-router.delete('/cache', (req: Request, res: Response) => {
+router.delete('/cache', (req: express.Request, res: express.Response) => {
   try {
     dataService.clearCache();
     
@@ -327,6 +333,81 @@ router.delete('/cache', (req: Request, res: Response) => {
     
   } catch (error) {
     handleServiceError(error, res);
+  }
+});
+
+// GET /api/exchanges - Get exchange information and capabilities
+router.get('/exchanges', async (req, res) => {
+  try {
+    const exchangeInfo = {
+      all: getSupportedExchanges(),
+      spot: getSpotExchanges(),
+      perp: getPerpExchanges(),
+      spotAndPerp: getExchangesByType('spot').filter(ex => getExchangesByType('perp').includes(ex)),
+      perpOnly: getExchangesByType('perp').filter(ex => !getExchangesByType('spot').includes(ex)),
+      capabilities: Object.fromEntries(
+        Object.entries(EXCHANGE_CONFIGS).map(([name, config]) => [
+          name,
+          {
+            supportsSpot: config.capabilities.supportsSpot,
+            supportsPerp: config.capabilities.supportsPerp,
+            marketTypes: config.capabilities.marketTypes
+          }
+        ])
+      )
+    };
+
+    res.json({
+      success: true,
+      data: exchangeInfo,
+      timestamp: Date.now()
+    });
+
+  } catch (error: any) {
+    console.error('❌ Error fetching exchange information:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch exchange information',
+      message: error.message,
+      timestamp: Date.now()
+    });
+  }
+});
+
+// GET /api/exchanges/market/:marketType - Get exchanges by market type
+router.get('/exchanges/market/:marketType', async (req, res) => {
+  try {
+    const marketType = req.params.marketType as MarketType;
+    
+    if (!['spot', 'perp'].includes(marketType)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid market type',
+        validTypes: ['spot', 'perp'],
+        timestamp: Date.now()
+      });
+    }
+
+    const exchanges = getExchangesByType(marketType);
+
+    res.json({
+      success: true,
+      data: {
+        marketType,
+        exchanges,
+        count: exchanges.length
+      },
+      timestamp: Date.now()
+    });
+
+  } catch (error: any) {
+    console.error(`❌ Error fetching exchanges for market type:`, error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch exchanges by market type',
+      message: error.message,
+      timestamp: Date.now()
+    });
   }
 });
 

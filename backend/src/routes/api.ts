@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 // Remove old service imports - we'll use direct CCXT approach
 const ccxt = require('ccxt');
 
-const router = Router();
+const router: Router = Router();
 
 // Initialize exchanges with proper settings for perpetual contracts
 const exchanges = {

@@ -42,6 +42,13 @@ const exchanges = {
     options: {
       defaultType: 'linear'
     }
+  }),
+  gate: new ccxt.gate({ 
+    enableRateLimit: true,
+    timeout: 30000,
+    options: {
+      defaultType: 'swap'
+    }
   })
 };
 
