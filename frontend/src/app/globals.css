@@ -8,106 +8,235 @@
   }
 }
 
-
-
 @layer base {
   :root {
-    /* Technical Black & White Theme */
-    --background: 0 0% 8%;
-    --foreground: 0 0% 95%;
-    --card: 0 0% 12%;
-    --card-foreground: 0 0% 95%;
-    --popover: 0 0% 12%;
-    --popover-foreground: 0 0% 95%;
-    --primary: 0 0% 100%;
-    --primary-foreground: 0 0% 0%;
-    --secondary: 0 0% 18%;
-    --secondary-foreground: 0 0% 95%;
-    --muted: 0 0% 18%;
-    --muted-foreground: 0 0% 70%;
-    --accent: 0 0% 22%;
-    --accent-foreground: 0 0% 95%;
-    --destructive: 0 0% 85%;
-    --destructive-foreground: 0 0% 15%;
-    --border: 0 0% 25%;
-    --input: 0 0% 20%;
-    --ring: 0 0% 90%;
-    --chart-1: 0 0% 85%;
-    --chart-2: 0 0% 70%;
-    --chart-3: 0 0% 55%;
-    --chart-4: 0 0% 40%;
-    --chart-5: 0 0% 25%;
-    --radius: 0.25rem;
+    /* Apple-inspired design tokens */
+    --background: 218 27% 94%;
+    --foreground: 215 25% 27%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 27%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 27%;
+    --primary: 213 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 215 25% 97%;
+    --secondary-foreground: 215 25% 27%;
+    --muted: 215 25% 97%;
+    --muted-foreground: 215 13% 54%;
+    --accent: 215 25% 97%;
+    --accent-foreground: 215 25% 27%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 215 28% 88%;
+    --input: 215 28% 88%;
+    --ring: 213 100% 50%;
+    --radius: 0.5rem;
   }
+
   .dark {
-    /* Same as root for consistent dark theme */
-    --background: 0 0% 8%;
-    --foreground: 0 0% 95%;
-    --card: 0 0% 12%;
-    --card-foreground: 0 0% 95%;
-    --popover: 0 0% 12%;
-    --popover-foreground: 0 0% 95%;
-    --primary: 0 0% 100%;
-    --primary-foreground: 0 0% 0%;
-    --secondary: 0 0% 18%;
-    --secondary-foreground: 0 0% 95%;
-    --muted: 0 0% 18%;
-    --muted-foreground: 0 0% 70%;
-    --accent: 0 0% 22%;
-    --accent-foreground: 0 0% 95%;
-    --destructive: 0 0% 85%;
-    --destructive-foreground: 0 0% 15%;
-    --border: 0 0% 25%;
-    --input: 0 0% 20%;
-    --ring: 0 0% 90%;
-    --chart-1: 0 0% 85%;
-    --chart-2: 0 0% 70%;
-    --chart-3: 0 0% 55%;
-    --chart-4: 0 0% 40%;
-    --chart-5: 0 0% 25%;
+    --background: 215 28% 8%;
+    --foreground: 215 25% 95%;
+    --card: 215 28% 10%;
+    --card-foreground: 215 25% 95%;
+    --popover: 215 28% 10%;
+    --popover-foreground: 215 25% 95%;
+    --primary: 213 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 215 28% 16%;
+    --secondary-foreground: 215 25% 95%;
+    --muted: 215 28% 16%;
+    --muted-foreground: 215 13% 65%;
+    --accent: 215 28% 16%;
+    --accent-foreground: 215 25% 95%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 215 28% 20%;
+    --input: 215 28% 20%;
+    --ring: 213 100% 50%;
   }
 }
-
-
 
 @layer base {
   * {
     @apply border-border;
   }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sf;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+  
+  /* Dark mode background with subtle pattern */
+  .dark body {
     background-image: 
-      linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-    background-size: 20px 20px;
-    background-position: 0 0, 0 0;
+      radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.08) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.04) 0%, transparent 50%),
+      radial-gradient(circle at 40% 80%, rgba(120, 119, 198, 0.06) 0%, transparent 50%);
+    background-attachment: fixed;
+  }
+  
+  /* Light mode background */
+  body:not(.dark) {
+    background-image: 
+      radial-gradient(circle at 20% 50%, rgba(0, 122, 255, 0.04) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(88, 86, 214, 0.03) 0%, transparent 50%);
+    background-attachment: fixed;
   }
 }
 
-/* Technical styling enhancements */
 @layer components {
-  .technical-card {
-    @apply border-2 border-solid border-gray-600 bg-card shadow-lg;
-    background: linear-gradient(135deg, hsl(var(--card)) 0%, rgba(255, 255, 255, 0.02) 100%);
+  /* Apple-style glass morphism card */
+  .apple-card {
+    @apply bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 rounded-2xl shadow-apple-lg;
+    background-image: linear-gradient(135deg, 
+      rgba(255, 255, 255, 0.3) 0%, 
+      rgba(255, 255, 255, 0.1) 100%);
   }
   
-  .technical-header {
-    @apply bg-gray-900 text-white px-4 py-2 text-sm font-mono uppercase tracking-wider border-b border-gray-600;
+  .dark .apple-card {
+    background-image: linear-gradient(135deg, 
+      rgba(255, 255, 255, 0.1) 0%, 
+      rgba(255, 255, 255, 0.05) 100%);
   }
   
-  .technical-value {
-    @apply font-mono text-sm;
+  /* Apple-style button */
+  .apple-button {
+    @apply inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+    @apply bg-apple-blue hover:bg-apple-blue/90 text-white shadow-apple active:scale-95;
   }
   
-  .technical-label {
-    @apply text-xs uppercase tracking-wider text-muted-foreground font-mono;
+  /* Apple-style secondary button */
+  .apple-button-secondary {
+    @apply inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+    @apply bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-apple active:scale-95;
   }
   
-  .technical-button {
-    @apply bg-white text-black border-2 border-white hover:bg-gray-200 hover:border-gray-200 transition-all duration-200 font-mono;
+  /* Apple-style input */
+  .apple-input {
+    @apply flex h-12 w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm px-4 py-3 text-sm ring-offset-background transition-colors;
+    @apply file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-apple-blue focus-visible:ring-offset-2;
+    @apply disabled:cursor-not-allowed disabled:opacity-50;
   }
   
-  .technical-input {
-    @apply bg-gray-900 border-gray-600 text-white font-mono;
+  /* Apple-style header */
+  .apple-header {
+    @apply sticky top-0 z-50 w-full border-b border-gray-200/50 dark:border-gray-700/50;
+    @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/80 dark:supports-[backdrop-filter]:bg-gray-900/80;
   }
+  
+  /* Apple-style section */
+  .apple-section {
+    @apply py-16 px-6;
+  }
+  
+  /* Apple-style hero text */
+  .apple-hero {
+    @apply text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight bg-gradient-to-br from-gray-900 via-gray-800 to-gray-700 dark:from-white dark:via-gray-200 dark:to-gray-400 bg-clip-text text-transparent;
+  }
+  
+  /* Apple-style subtext */
+  .apple-subtext {
+    @apply text-xl md:text-2xl text-gray-600 dark:text-gray-400 font-normal leading-relaxed;
+  }
+  
+  /* Apple-style table */
+  .apple-table {
+    @apply w-full border-collapse;
+  }
+  
+  .apple-table thead {
+    @apply bg-gray-50/50 dark:bg-gray-800/50 backdrop-blur-sm;
+  }
+  
+  .apple-table th {
+    @apply px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700;
+  }
+  
+  .apple-table td {
+    @apply px-6 py-4 text-sm text-gray-600 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800;
+  }
+  
+  .apple-table tbody tr {
+    @apply hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors duration-150;
+  }
+  
+  /* Status indicators */
+  .status-online {
+    @apply inline-flex items-center gap-2 text-apple-green;
+  }
+  
+  .status-offline {
+    @apply inline-flex items-center gap-2 text-apple-red;
+  }
+  
+  .status-checking {
+    @apply inline-flex items-center gap-2 text-apple-orange;
+  }
+  
+  /* Apple-style animations */
+  .animate-breath {
+    animation: breath 2s ease-in-out infinite;
+  }
+  
+  @keyframes breath {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+  }
+  
+  /* Smooth transitions */
+  .transition-apple {
+    @apply transition-all duration-300 ease-out;
+  }
+  
+  /* Loading states */
+  .loading-shimmer {
+    @apply animate-pulse bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700;
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+  
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }

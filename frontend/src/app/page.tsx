@@ -6,6 +6,7 @@ import FilterPanel from '@/components/FilterPanel';
 import Layout from '@/components/Layout';
 import { apiService } from '@/lib/apiService';
 import { PriceRow, FilterOptions } from '@/types';
+import { TrendingUp, Activity } from 'lucide-react';
 
 export default function Home() {
   const [data, setData] = useState<PriceRow[]>([]);
@@ -65,59 +66,153 @@ export default function Home() {
     setLanguage(newLanguage);
   };
 
+  const t = {
+    en: {
+      hero: 'Crypto Arbitrage',
+      heroHighlight: 'Reimagined',
+      subtitle: 'Real-time opportunities across exchanges',
+      getStarted: 'Refresh Data',
+      lastUpdate: 'Last updated',
+      opportunities: 'Opportunities Found',
+      noData: 'No arbitrage opportunities found with current filters'
+    },
+    zh: {
+      hero: '加密货币套利',
+      heroHighlight: '重新定义',
+      subtitle: '实时跨交易所机会',
+      getStarted: '刷新数据',
+      lastUpdate: '最后更新',
+      opportunities: '发现机会',
+      noData: '当前过滤条件下未发现套利机会'
+    }
+  };
+
+  const currentTranslations = t[language];
+
   return (
     <Layout language={language} onLanguageChange={handleLanguageChange}>
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold mb-2 text-white">
-            Crypto Arbitrage Monitor
-          </h1>
-          <p className="text-gray-400">
-            Real-time arbitrage opportunities across major exchanges
-          </p>
-          {lastUpdate && (
-            <p className="text-sm text-green-400 mt-2">
-              Last updated: {lastUpdate.toLocaleTimeString()}
-            </p>
-          )}
-        </div>
-
-        <FilterPanel 
-          filters={filters}
-          onFiltersChange={handleFilterChange}
-          language={language}
-        />
-
-        {error && (
-          <div className="mb-6 p-4 bg-red-900/50 border border-red-500 rounded-lg">
-            <p className="text-red-200">{error}</p>
+      {/* Compact Hero Section */}
+      <section className="py-12 px-6 bg-gradient-to-br from-white via-gray-50 to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-blue-900/20">
+        <div className="container mx-auto text-center">
+          <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
+            <div className="space-y-3">
+              <h1 className="text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-br from-gray-900 via-gray-800 to-gray-700 dark:from-white dark:via-gray-200 dark:to-gray-400 bg-clip-text text-transparent">
+                {currentTranslations.hero}{' '}
+                <span className="bg-gradient-to-r from-apple-blue to-apple-indigo bg-clip-text text-transparent">
+                  {currentTranslations.heroHighlight}
+                </span>
+              </h1>
+              <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 font-normal leading-relaxed max-w-xl mx-auto">
+                {currentTranslations.subtitle}
+              </p>
+            </div>
+            
             <button 
               onClick={fetchData}
-              className="mt-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm"
+              className="apple-button px-6 py-3 text-base font-medium rounded-xl shadow-apple-lg hover:shadow-apple-xl transform hover:scale-105 transition-all duration-300"
             >
-              Retry
+              <Activity className="mr-2 h-4 w-4" />
+              {currentTranslations.getStarted}
             </button>
           </div>
-        )}
-
-        <div className="bg-gray-900 rounded-lg border border-gray-700 overflow-hidden">
-          <PriceTable 
-            data={data} 
-            filters={filters}
-            language={language}
-            isLoading={loading}
-            connectionStatus={connectionStatus}
-          />
         </div>
+      </section>
 
-        {!loading && data.length === 0 && !error && (
-          <div className="text-center py-12">
-            <p className="text-gray-400 text-lg">
-              No arbitrage opportunities found with current filters
-            </p>
+      {/* Main Content */}
+      <section className="py-8">
+        <div className="container mx-auto px-6">
+          {/* Status Bar */}
+          <div className="apple-card p-6 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center space-x-4">
+                <div className={`flex items-center space-x-2 ${
+                  connectionStatus === 'connected' ? 'status-online' : 
+                  connectionStatus === 'disconnected' ? 'status-offline' : 'status-checking'
+                }`}>
+                  <div className={`w-2 h-2 rounded-full ${
+                    connectionStatus === 'connected' ? 'bg-apple-green animate-pulse' :
+                    connectionStatus === 'disconnected' ? 'bg-apple-red' : 'bg-apple-orange'
+                  }`} />
+                  <span className="text-sm font-medium">
+                    {connectionStatus === 'connected' ? 'Connected' : 
+                     connectionStatus === 'disconnected' ? 'Disconnected' : 'Checking...'}
+                  </span>
+                </div>
+                
+                {data.length > 0 && (
+                  <div className="flex items-center space-x-2 text-apple-blue">
+                    <TrendingUp className="w-4 h-4" />
+                    <span className="text-sm font-medium">
+                      {data.length} {currentTranslations.opportunities}
+                    </span>
+                  </div>
+                )}
+              </div>
+              
+              {lastUpdate && (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {currentTranslations.lastUpdate}: {lastUpdate.toLocaleTimeString()}
+                </p>
+              )}
+            </div>
           </div>
-        )}
-      </div>
+
+          {/* Filters */}
+          <div className="apple-card p-6 mb-6">
+            <FilterPanel 
+              filters={filters}
+              onFiltersChange={handleFilterChange}
+              language={language}
+            />
+          </div>
+
+          {/* Error State */}
+          {error && (
+            <div className="apple-card p-6 mb-6 border-l-4 border-apple-red">
+              <div className="flex items-start space-x-3">
+                <div className="w-5 h-5 rounded-full bg-apple-red flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-white text-xs">!</span>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-apple-red font-medium">{error}</p>
+                  <button 
+                    onClick={fetchData}
+                    className="apple-button-secondary px-4 py-2 text-sm"
+                  >
+                    Retry
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Data Table */}
+          <div className="apple-card overflow-hidden">
+            <PriceTable 
+              data={data} 
+              filters={filters}
+              language={language}
+              isLoading={loading}
+              connectionStatus={connectionStatus}
+            />
+          </div>
+
+          {/* Empty State */}
+          {!loading && data.length === 0 && !error && (
+            <div className="apple-card p-16 text-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <TrendingUp className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                No Opportunities
+              </h3>
+              <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto leading-relaxed">
+                {currentTranslations.noData}
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
     </Layout>
   );
 }

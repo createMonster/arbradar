@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Settings, Globe, Menu } from 'lucide-react';
+import { Settings, Globe, Menu, Cpu, TrendingUp, Moon, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -16,35 +16,53 @@ interface LayoutProps {
 
 export default function Layout({ children, language, onLanguageChange }: LayoutProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
+
+  const toggleDarkMode = () => {
+    setIsDarkMode(!isDarkMode);
+    document.documentElement.classList.toggle('dark');
+  };
 
   const t = {
     en: {
-      title: 'Crypto Arbitrage Monitor',
+      title: 'ArbRadar',
+      subtitle: 'Crypto Arbitrage Monitor',
+      tagline: 'Real-time arbitrage opportunities across major exchanges',
       settings: 'Settings',
       language: 'Language',
       english: 'English',
       chinese: '中文',
-      theme: 'Theme',
+      theme: 'Appearance',
       light: 'Light',
       dark: 'Dark',
       updateInterval: 'Update Interval',
       seconds: 'seconds',
       enableSound: 'Enable Sound Alerts',
-      menu: 'Menu'
+      menu: 'Menu',
+      features: 'Features',
+      realTime: 'Real-time monitoring',
+      multiExchange: 'Multi-exchange coverage',
+      smartAlerts: 'Smart notifications'
     },
     zh: {
-      title: '加密货币套利监控',
+      title: 'ArbRadar',
+      subtitle: '加密货币套利监控',
+      tagline: '实时监控主要交易所套利机会',
       settings: '设置',
       language: '语言',
       english: 'English',
       chinese: '中文',
-      theme: '主题',
+      theme: '外观',
       light: '浅色',
       dark: '深色',
       updateInterval: '更新间隔',
       seconds: '秒',
       enableSound: '启用声音提醒',
-      menu: '菜单'
+      menu: '菜单',
+      features: '功能特色',
+      realTime: '实时监控',
+      multiExchange: '多交易所覆盖',
+      smartAlerts: '智能提醒'
     }
   };
 
@@ -53,25 +71,45 @@ export default function Layout({ children, language, onLanguageChange }: LayoutP
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b-2 border-gray-600 bg-gray-900/95 backdrop-blur supports-[backdrop-filter]:bg-gray-900/80">
-        <div className="container mx-auto px-4">
+      <header className="apple-header">
+        <div className="container mx-auto px-6">
           <div className="flex h-16 items-center justify-between">
             {/* Logo and Title */}
             <div className="flex items-center space-x-4">
-              <div className="text-2xl font-mono font-bold text-white uppercase tracking-wider">
-                [{currentTranslations.title}]
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gradient-to-br from-apple-blue to-apple-indigo rounded-xl flex items-center justify-center shadow-apple">
+                  <Cpu className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex flex-col">
+                  <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+                    {currentTranslations.title}
+                  </h1>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                    {currentTranslations.subtitle}
+                  </p>
+                </div>
               </div>
             </div>
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-2">
+            <div className="hidden md:flex items-center space-x-3">
+              {/* Dark Mode Toggle */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleDarkMode}
+                className="apple-button-secondary h-10 w-10 p-0"
+              >
+                {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
+
               {/* Language Toggle */}
               <Select value={language} onValueChange={(value: Language) => onLanguageChange(value)}>
-                <SelectTrigger className="w-[140px]">
-                  <Globe className="mr-2 h-4 w-4" />
+                <SelectTrigger className="apple-input w-[140px] h-10">
+                  <Globe className="mr-2 h-4 w-4 text-apple-blue" />
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="apple-card border-0">
                   <SelectItem value="en">{currentTranslations.english}</SelectItem>
                   <SelectItem value="zh">{currentTranslations.chinese}</SelectItem>
                 </SelectContent>
@@ -80,56 +118,64 @@ export default function Layout({ children, language, onLanguageChange }: LayoutP
               {/* Settings */}
               <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="technical-button border-gray-600 hover:bg-gray-800 hover:text-white">
+                  <Button className="apple-button-secondary h-10 px-4">
                     <Settings className="mr-2 h-4 w-4" />
                     {currentTranslations.settings}
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="apple-card border-0 sm:max-w-[425px]">
                   <DialogHeader>
-                    <DialogTitle>{currentTranslations.settings}</DialogTitle>
+                    <DialogTitle className="text-xl font-semibold">
+                      {currentTranslations.settings}
+                    </DialogTitle>
                   </DialogHeader>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <label className="text-right text-sm font-medium">
+                  <div className="grid gap-6 py-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         {currentTranslations.language}
                       </label>
                       <Select value={language} onValueChange={(value: Language) => onLanguageChange(value)}>
-                        <SelectTrigger className="col-span-3">
+                        <SelectTrigger className="apple-input">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="apple-card border-0">
                           <SelectItem value="en">{currentTranslations.english}</SelectItem>
                           <SelectItem value="zh">{currentTranslations.chinese}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <label className="text-right text-sm font-medium">
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         {currentTranslations.theme}
                       </label>
-                      <Select defaultValue="light">
-                        <SelectTrigger className="col-span-3">
+                      <Select value={isDarkMode ? "dark" : "light"} onValueChange={(value) => {
+                        if ((value === "dark") !== isDarkMode) {
+                          toggleDarkMode();
+                        }
+                      }}>
+                        <SelectTrigger className="apple-input">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="apple-card border-0">
                           <SelectItem value="light">{currentTranslations.light}</SelectItem>
                           <SelectItem value="dark">{currentTranslations.dark}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="grid grid-cols-4 items-center gap-4">
-                      <label className="text-right text-sm font-medium">
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         {currentTranslations.updateInterval}
                       </label>
-                      <Select defaultValue="10">
-                        <SelectTrigger className="col-span-3">
+                      <Select defaultValue="50">
+                        <SelectTrigger className="apple-input">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="5">5 {currentTranslations.seconds}</SelectItem>
+                        <SelectContent className="apple-card border-0">
                           <SelectItem value="10">10 {currentTranslations.seconds}</SelectItem>
                           <SelectItem value="30">30 {currentTranslations.seconds}</SelectItem>
+                          <SelectItem value="50">50 {currentTranslations.seconds}</SelectItem>
                           <SelectItem value="60">60 {currentTranslations.seconds}</SelectItem>
                         </SelectContent>
                       </Select>
@@ -143,35 +189,45 @@ export default function Layout({ children, language, onLanguageChange }: LayoutP
             <div className="md:hidden">
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button variant="outline" size="sm">
+                  <Button variant="ghost" size="sm" className="apple-button-secondary h-10 w-10 p-0">
                     <Menu className="h-4 w-4" />
                     <span className="sr-only">{currentTranslations.menu}</span>
                   </Button>
                 </SheetTrigger>
-                <SheetContent>
-                  <div className="flex flex-col space-y-4 mt-4">
-                    <div>
-                      <label className="text-sm font-medium mb-2 block">
+                <SheetContent className="apple-card border-0">
+                  <div className="flex flex-col space-y-6 mt-8">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         {currentTranslations.language}
                       </label>
                       <Select value={language} onValueChange={(value: Language) => onLanguageChange(value)}>
-                        <SelectTrigger>
-                          <Globe className="mr-2 h-4 w-4" />
+                        <SelectTrigger className="apple-input">
+                          <Globe className="mr-2 h-4 w-4 text-apple-blue" />
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="apple-card border-0">
                           <SelectItem value="en">{currentTranslations.english}</SelectItem>
                           <SelectItem value="zh">{currentTranslations.chinese}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
+                    
                     <Button 
-                      variant="outline" 
+                      variant="ghost" 
                       onClick={() => setIsSettingsOpen(true)}
-                      className="justify-start"
+                      className="apple-button-secondary justify-start h-12"
                     >
-                      <Settings className="mr-2 h-4 w-4" />
+                      <Settings className="mr-3 h-4 w-4" />
                       {currentTranslations.settings}
+                    </Button>
+                    
+                    <Button
+                      variant="ghost"
+                      onClick={toggleDarkMode}
+                      className="apple-button-secondary justify-start h-12"
+                    >
+                      {isDarkMode ? <Sun className="mr-3 h-4 w-4" /> : <Moon className="mr-3 h-4 w-4" />}
+                      {currentTranslations.theme}
                     </Button>
                   </div>
                 </SheetContent>
@@ -182,18 +238,30 @@ export default function Layout({ children, language, onLanguageChange }: LayoutP
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6">
+      <main className="relative">
         {children}
       </main>
 
       {/* Footer */}
-      <footer className="border-t mt-12">
-        <div className="container mx-auto px-4 py-6">
-          <div className="text-center text-sm text-muted-foreground">
-            {language === 'en' 
-              ? '© 2024 Crypto Arbitrage Monitor. Real-time cryptocurrency price spreads across major exchanges.'
-              : '© 2024 加密货币套利监控. 主要交易所实时加密货币价差监控.'
-            }
+      <footer className="border-t border-gray-200/50 dark:border-gray-700/50 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm mt-24">
+        <div className="container mx-auto px-6 py-12">
+          <div className="text-center space-y-4">
+            <div className="flex items-center justify-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex items-center space-x-2">
+                <TrendingUp className="w-4 h-4 text-apple-green" />
+                <span>{currentTranslations.realTime}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Cpu className="w-4 h-4 text-apple-blue" />
+                <span>{currentTranslations.multiExchange}</span>
+              </div>
+            </div>
+            <p className="text-sm text-gray-400 dark:text-gray-500 max-w-md mx-auto leading-relaxed">
+              {language === 'en' 
+                ? '© 2024 ArbRadar. Advanced cryptocurrency arbitrage monitoring with real-time price spreads across major exchanges.'
+                : '© 2024 ArbRadar. 先进的加密货币套利监控，实时监控主要交易所价差。'
+              }
+            </p>
           </div>
         </div>
       </footer>

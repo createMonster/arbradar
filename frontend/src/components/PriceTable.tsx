@@ -1,8 +1,8 @@
 'use client';
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import React from 'react';
-import { Clock, TrendingUp, TrendingDown } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Clock, TrendingUp, TrendingDown, Zap, ArrowUpRight, ArrowDownLeft, Activity } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -17,73 +17,81 @@ interface PriceTableProps {
   connectionStatus?: 'connected' | 'disconnected' | 'checking';
 }
 
-const exchanges = ['Binance', 'OKX', 'Bitget', 'Bybit'];
+type MarketType = 'all' | 'spot' | 'perp';
 
 export default function PriceTable({ data, filters, language, isLoading = false, connectionStatus = 'checking' }: PriceTableProps) {
+  const [activeTab, setActiveTab] = useState<MarketType>('all');
+
   const t = {
     en: {
+      all: 'All Markets',
+      spot: 'Spot',
+      perp: 'Perpetual',
       symbol: 'Symbol',
       spread: 'Spread',
       bestBuy: 'Best Buy',
       bestSell: 'Best Sell',
       fundingRate: 'Funding Rate',
-      fundingRates: 'Funding Rates',
       volume: 'Volume',
-      price: 'Price',
-      lastUpdated: 'Last Updated',
-      noData: 'No data matches your filters',
-      loading: 'Loading...',
-      disconnected: 'Backend disconnected - Demo mode',
-      connecting: 'Connecting to exchanges...',
-      noArbitrage: 'No arbitrage opportunities found',
-      spot: 'Spot',
-      perp: 'Perpetual',
+      loading: 'Loading market data...',
+      noData: 'No opportunities available',
       buyFrom: 'BUY FROM',
       sellTo: 'SELL TO',
-      allExchanges: 'ALL EXCHANGES',
       nextFunding: 'Next Funding',
-      buyExchange: 'Buy Exchange',
-      sellExchange: 'Sell Exchange',
-      fundingDifferential: 'Funding Rate Differential',
       annually: 'annually',
+      opportunities: 'opportunities',
+      found: 'found'
     },
     zh: {
+      all: '全部市场',
+      spot: '现货',
+      perp: '永续合约',
       symbol: '交易对',
       spread: '价差',
       bestBuy: '最佳买入',
       bestSell: '最佳卖出',
       fundingRate: '资金费率',
-      fundingRates: '资金费率',
       volume: '交易量',
-      price: '价格',
-      lastUpdated: '最后更新',
-      noData: '没有数据匹配您的筛选条件',
-      loading: '加载中...',
-      disconnected: '后端断开连接 - 演示模式',
-      connecting: '连接交易所中...',
-      noArbitrage: '未找到套利机会',
-      spot: '现货',
-      perp: '永续合约',
+      loading: '加载市场数据中...',
+      noData: '暂无机会',
       buyFrom: '买入交易所',
       sellTo: '卖出交易所',
-      allExchanges: '所有交易所',
       nextFunding: '下次资金费率',
-      buyExchange: '买入方',
-      sellExchange: '卖出方',
-      fundingDifferential: '资金费率差值',
       annually: '年化',
+      opportunities: '机会',
+      found: '发现'
     }
   };
 
   const currentTranslations = t[language];
 
-  // Helper function to determine market type from symbol (fallback if backend doesn't provide marketType)
+  // Helper function to determine market type
   const getMarketType = (symbol: string): 'spot' | 'perp' => {
-    // Perpetual contracts typically have formats like:
-    // BTC/USDT:USDT (with colon)
-    // BTC-PERP, BTC/USD:PERPETUAL
     return symbol.includes(':') || symbol.includes('PERP') || symbol.includes('PERPETUAL') ? 'perp' : 'spot';
   };
+
+  // Filter data by tab
+  const filteredData = useMemo(() => {
+    if (activeTab === 'all') return data;
+    return data.filter(row => {
+      const marketType = row.marketType || getMarketType(row.symbol);
+      return marketType === activeTab;
+    });
+  }, [data, activeTab]);
+
+  const tabCounts = useMemo(() => {
+    const all = data.length;
+    const spot = data.filter(row => {
+      const marketType = row.marketType || getMarketType(row.symbol);
+      return marketType === 'spot';
+    }).length;
+    const perp = data.filter(row => {
+      const marketType = row.marketType || getMarketType(row.symbol);
+      return marketType === 'perp';
+    }).length;
+    
+    return { all, spot, perp };
+  }, [data]);
 
   const formatNumber = (num: number, decimals: number = 2): string => {
     if (num >= 1000000) {
@@ -97,23 +105,9 @@ export default function PriceTable({ data, filters, language, isLoading = false,
     });
   };
 
-  const formatPercentage = (num: number): string => {
-    return `${num >= 0 ? '+' : ''}${num.toFixed(4)}%`;
-  };
-
   const formatFundingRate = (rate: number): string => {
     const percentage = rate * 100;
     return `${percentage >= 0 ? '+' : ''}${percentage.toFixed(4)}%`;
-  };
-
-  const formatTime = (timestamp: number): string => {
-    const now = Date.now();
-    const diff = now - timestamp;
-    const seconds = Math.floor(diff / 1000);
-    
-    if (seconds < 60) return `${seconds}s ago`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    return `${Math.floor(seconds / 3600)}h ago`;
   };
 
   const formatNextFunding = (timestamp: number): string => {
@@ -126,386 +120,302 @@ export default function PriceTable({ data, filters, language, isLoading = false,
     return `${minutes}m`;
   };
 
-  const getSpreadColor = (percentage: number): string => {
-    if (percentage >= 2) return 'text-white font-bold bg-gray-700 px-2 py-1 rounded';
-    if (percentage >= 1) return 'text-gray-200 font-semibold';
-    if (percentage >= 0.5) return 'text-gray-400';
-    return 'text-gray-600';
-  };
+  // Steve Jobs-inspired Tab Component
+  const TabButton = ({ 
+    type, 
+    label, 
+    count, 
+    isActive, 
+    onClick 
+  }: { 
+    type: MarketType;
+    label: string;
+    count: number;
+    isActive: boolean;
+    onClick: () => void;
+  }) => (
+    <button
+      onClick={onClick}
+      className={`
+        relative px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-300 ease-out
+        ${isActive 
+          ? 'bg-gray-900 text-white shadow-lg shadow-gray-900/25 scale-105' 
+          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'
+        }
+        flex items-center space-x-2 min-w-[120px] justify-center
+        active:scale-95 hover:scale-105 transform
+        focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900
+      `}
+    >
+      <span>{label}</span>
+      <Badge 
+        className={`
+          ${isActive 
+            ? 'bg-white/20 text-white border-white/30' 
+            : 'bg-gray-600 text-white border-0'
+          }
+          text-xs font-bold px-2 py-0.5 rounded-full min-w-[24px] flex items-center justify-center
+        `}
+      >
+        {count}
+      </Badge>
+      
+      {/* Active indicator */}
+      {isActive && (
+        <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white rounded-full shadow-sm" />
+      )}
+    </button>
+  );
 
-  const getFundingRateColor = (rate: number): string => {
-    if (rate > 0.001) return 'text-red-400'; // High positive rate
-    if (rate > 0) return 'text-yellow-400';   // Positive rate
-    if (rate > -0.001) return 'text-green-400'; // Small negative rate
-    return 'text-green-300'; // High negative rate
-  };
-
-  // const filterData = (data: PriceRow[]): PriceRow[] => {
-  //   return data.filter(row => {
-  //     // Search filter
-  //     if (filters.searchTerm && !row.symbol.toLowerCase().includes(filters.searchTerm.toLowerCase())) {
-  //       return false;
-  //     }
-
-  //     // Volume filter - only apply if minVolume > 0
-  //     if (filters.minVolume > 0) {
-  //       const totalVolume = Object.values(row.exchanges).reduce((sum, exchange) => sum + exchange.volume, 0);
-  //       if (totalVolume < filters.minVolume) {
-  //         return false;
-  //       }
-  //     }
-
-  //     // Spread filter - only apply if minSpread > 0
-  //     if (filters.minSpread > 0 && row.spread.percentage < filters.minSpread) {
-  //       return false;
-  //     }
-
-  //     // Exchange filter - only apply if specific exchanges are selected
-  //     if (filters.selectedExchanges.length > 0) {
-  //       const hasSelectedExchange = filters.selectedExchanges.some(exchange => 
-  //         row.exchanges[exchange] !== undefined
-  //       );
-  //       if (!hasSelectedExchange) {
-  //         return false;
-  //       }
-  //     }
-
-  //     return true;
-  //   });
-  // };
-
-  //const filteredData = filterData(data);
-  // no filter for now
-  const filteredData = data;
-
+  // Loading State
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>{currentTranslations.loading}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {[...Array(10)].map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (filteredData.length === 0) {
-    return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="text-muted-foreground text-lg mb-2">
-              {currentTranslations.noData}
+      <div className="space-y-6">
+        {/* Tab Headers */}
+        <div className="flex items-center justify-center space-x-3 p-6">
+          <div className="h-12 w-32 bg-gray-200 dark:bg-gray-700 rounded-xl loading-shimmer" />
+          <div className="h-12 w-32 bg-gray-200 dark:bg-gray-700 rounded-xl loading-shimmer" />
+          <div className="h-12 w-32 bg-gray-200 dark:bg-gray-700 rounded-xl loading-shimmer" />
+        </div>
+        
+        {/* Loading Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="apple-card p-6 space-y-4">
+              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-lg loading-shimmer" />
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded loading-shimmer" />
+              <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded-lg loading-shimmer" />
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          ))}
+        </div>
+      </div>
     );
   }
 
-  // Sort by spread percentage descending (best opportunities first)
+  // Empty State
+  if (data.length === 0) {
+    return (
+      <div className="space-y-6">
+        {/* Tab Headers */}
+        <div className="flex items-center justify-center space-x-3 p-6">
+          <TabButton
+            type="all"
+            label={currentTranslations.all}
+            count={0}
+            isActive={activeTab === 'all'}
+            onClick={() => setActiveTab('all')}
+          />
+          <TabButton
+            type="spot"
+            label={currentTranslations.spot}
+            count={0}
+            isActive={activeTab === 'spot'}
+            onClick={() => setActiveTab('spot')}
+          />
+          <TabButton
+            type="perp"
+            label={currentTranslations.perp}
+            count={0}
+            isActive={activeTab === 'perp'}
+            onClick={() => setActiveTab('perp')}
+          />
+        </div>
+        
+        {/* Empty State */}
+        <div className="text-center py-16">
+          <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-3xl flex items-center justify-center mx-auto mb-6">
+            <Activity className="w-10 h-10 text-gray-400" />
+          </div>
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            {currentTranslations.noData}
+          </h3>
+          <p className="text-gray-500 dark:text-gray-400">
+            {currentTranslations.loading}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Sort filtered data by spread percentage
   const sortedData = [...filteredData].sort((a, b) => b.spread.percentage - a.spread.percentage);
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <Card className="technical-card">
-        <CardHeader className="technical-header">
-          <CardTitle className="flex items-center justify-between font-mono">
-            <span>ARBITRAGE_OPPORTUNITIES [{sortedData.length}]</span>
-            <div className="flex items-center space-x-2">
-              {connectionStatus === 'connected' && (
-                <Badge variant="outline" className="bg-green-900 text-green-200 border-green-600 font-mono">
-                  <Clock className="mr-1 h-3 w-3" />
-                  LIVE
-                </Badge>
-              )}
-              {connectionStatus === 'disconnected' && (
-                <Badge variant="outline" className="bg-red-900 text-red-200 border-red-600 font-mono">
-                  OFFLINE
-                </Badge>
-              )}
-              {connectionStatus === 'checking' && (
-                <Badge variant="outline" className="bg-yellow-900 text-yellow-200 border-yellow-600 font-mono">
-                  CONNECTING...
-                </Badge>
-              )}
-            </div>
-          </CardTitle>
-        </CardHeader>
-      </Card>
+    <div className="space-y-8">
+      {/* Steve Jobs-inspired Tab Navigation */}
+      <div className="flex items-center justify-center space-x-4 p-6 bg-gradient-to-r from-gray-50 via-white to-gray-50 dark:from-gray-800 dark:via-gray-900 dark:to-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50">
+        <TabButton
+          type="all"
+          label={currentTranslations.all}
+          count={tabCounts.all}
+          isActive={activeTab === 'all'}
+          onClick={() => setActiveTab('all')}
+        />
+        <TabButton
+          type="spot"
+          label={currentTranslations.spot}
+          count={tabCounts.spot}
+          isActive={activeTab === 'spot'}
+          onClick={() => setActiveTab('spot')}
+        />
+        <TabButton
+          type="perp"
+          label={currentTranslations.perp}
+          count={tabCounts.perp}
+          isActive={activeTab === 'perp'}
+          onClick={() => setActiveTab('perp')}
+        />
+      </div>
 
-      {/* Token Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Results Summary */}
+      <div className="text-center">
+        <p className="text-lg font-medium text-gray-600 dark:text-gray-400">
+          <span className="text-gray-900 dark:text-white font-bold">{sortedData.length}</span> {currentTranslations.opportunities} {currentTranslations.found}
+        </p>
+      </div>
+
+      {/* Opportunities Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {sortedData.map((row) => {
           const bestBuyExchange = row.exchanges[row.spread.bestBuy];
           const bestSellExchange = row.exchanges[row.spread.bestSell];
-          const totalVolume = Object.values(row.exchanges).reduce((sum, ex) => sum + ex.volume, 0);
-          // Use backend-provided marketType if available, otherwise fall back to detection
           const marketType = row.marketType || getMarketType(row.symbol);
           const isPerp = marketType === 'perp';
           
           return (
-            <Card key={row.symbol} className="technical-card hover:bg-gray-700/30 transition-colors cursor-pointer">
-              {/* Card Header with Symbol and Spread */}
-              <div className="technical-header flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <span className="font-mono font-bold text-lg">{row.symbol}</span>
+            <div 
+              key={row.symbol} 
+              className="apple-card p-6 space-y-6 hover:scale-105 transition-apple cursor-pointer group"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white font-sf">
+                    {row.symbol.replace(':USDT', '').replace('/USDT', '')}
+                  </h3>
                   <Badge 
-                    variant="secondary" 
-                    className={`font-mono text-xs ${
-                      isPerp 
-                        ? 'bg-purple-700 text-purple-200 border-purple-500' 
-                        : 'bg-blue-700 text-blue-200 border-blue-500'
-                    }`}
+                    className={`
+                      text-xs font-semibold px-3 py-1 rounded-full
+                      ${isPerp 
+                        ? 'bg-gray-700 text-white border border-gray-600' 
+                        : 'bg-gray-600 text-white border border-gray-500'
+                      }
+                    `}
                   >
-                    {isPerp ? currentTranslations.perp.toUpperCase() : currentTranslations.spot.toUpperCase()}
+                    {isPerp ? currentTranslations.perp : currentTranslations.spot}
                   </Badge>
                 </div>
-                <div className={`text-right ${getSpreadColor(row.spread.percentage)}`}>
-                  <div className="font-mono font-bold text-lg">
+                
+                <div className="text-right">
+                  <div className="text-3xl font-bold text-gray-900 dark:text-white">
                     {row.spread.percentage.toFixed(2)}%
                   </div>
-                  <div className="text-xs text-gray-400 font-mono">
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
                     ${row.spread.absolute.toFixed(4)}
                   </div>
                 </div>
               </div>
 
-              {/* Card Content */}
-              <CardContent className="pt-4 space-y-3">
-                {/* Best Buy/Sell Prices */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <div className="technical-label">{currentTranslations.buyFrom}</div>
-                    <div className="bg-gray-800 p-2 rounded border border-gray-600">
-                      <div className="font-mono font-bold text-green-400">
-                        {row.spread.bestBuy}
-                      </div>
-                      <div className="technical-value text-white">
-                        ${bestBuyExchange?.price.toFixed(bestBuyExchange.price > 1 ? 2 : 6)}
-                      </div>
-                    </div>
+              {/* Buy/Sell Actions */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <ArrowDownLeft className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                    <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                      {currentTranslations.buyFrom}
+                    </span>
                   </div>
-                  
-                  <div className="space-y-1">
-                    <div className="technical-label">{currentTranslations.sellTo}</div>
-                    <div className="bg-gray-800 p-2 rounded border border-gray-600">
-                      <div className="font-mono font-bold text-red-400">
-                        {row.spread.bestSell}
-                      </div>
-                      <div className="technical-value text-white">
-                        ${bestSellExchange?.price.toFixed(bestSellExchange.price > 1 ? 2 : 6)}
-                      </div>
-                    </div>
+                  <div className="font-bold text-gray-900 dark:text-white mb-1">
+                    {row.spread.bestBuy}
+                  </div>
+                  <div className="text-lg font-bold font-sf text-gray-800 dark:text-gray-200">
+                    ${bestBuyExchange?.price.toFixed(bestBuyExchange.price > 1 ? 2 : 6)}
                   </div>
                 </div>
+                
+                <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <ArrowUpRight className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                    <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                      {currentTranslations.sellTo}
+                    </span>
+                  </div>
+                  <div className="font-bold text-gray-900 dark:text-white mb-1">
+                    {row.spread.bestSell}
+                  </div>
+                  <div className="text-lg font-bold font-sf text-gray-800 dark:text-gray-200">
+                    ${bestSellExchange?.price.toFixed(bestSellExchange.price > 1 ? 2 : 6)}
+                  </div>
+                </div>
+              </div>
 
-                {/* Enhanced Funding Rates for Both Sides (Perp only) */}
-                {isPerp && (
-                  <div className="bg-gray-800/50 p-3 rounded border border-gray-600">
-                    <div className="technical-label mb-3">{currentTranslations.fundingRates}</div>
+              {/* Funding Rate Section for Perp */}
+              {isPerp && (bestBuyExchange?.fundingRate || bestSellExchange?.fundingRate) && (
+                <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-xl border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <Zap className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                    <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
+                      {currentTranslations.fundingRate}
+                    </span>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    {bestBuyExchange?.fundingRate && (
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                          {row.spread.bestBuy}
+                        </div>
+                        <div className="font-bold text-gray-800 dark:text-gray-200">
+                          {formatFundingRate(bestBuyExchange.fundingRate.rate)}
+                        </div>
+                      </div>
+                    )}
                     
-                    {/* Check for per-exchange funding rates first (enhanced data) */}
-                    {(bestBuyExchange?.fundingRate || bestSellExchange?.fundingRate || row.fundingRates) ? (
-                      <div className="space-y-3">
-                        {/* Buy and Sell Exchange Funding Rates */}
-                        <div className="grid grid-cols-2 gap-3">
-                          {/* Buy Exchange Funding Rate */}
-                          <div className="bg-green-900/20 p-2 rounded border border-green-600/30">
-                            <div className="text-xs text-green-400 mb-1">
-                              {currentTranslations.buyExchange} ({row.spread.bestBuy})
-                            </div>
-                            {bestBuyExchange?.fundingRate ? (
-                              <div className="space-y-1">
-                                <div className={`font-mono text-sm ${getFundingRateColor(bestBuyExchange.fundingRate.rate)}`}>
-                                  {formatFundingRate(bestBuyExchange.fundingRate.rate)}
-                                </div>
-                                <div className="flex items-center space-x-1 text-xs text-gray-400">
-                                  <Clock className="h-3 w-3" />
-                                  <span>{formatNextFunding(bestBuyExchange.fundingRate.nextTime)}</span>
-                                </div>
-                                {bestBuyExchange.fundingRate.dataAge !== undefined && (
-                                  <div className="text-xs text-gray-500">
-                                    {bestBuyExchange.fundingRate.dataAge}s ago
-                                  </div>
-                                )}
-                              </div>
-                            ) : row.fundingRates?.[row.spread.bestBuy] ? (
-                              <div className="space-y-1">
-                                <div className={`font-mono text-sm ${getFundingRateColor(row.fundingRates[row.spread.bestBuy].rate)}`}>
-                                  {formatFundingRate(row.fundingRates[row.spread.bestBuy].rate)}
-                                </div>
-                                <div className="flex items-center space-x-1 text-xs text-gray-400">
-                                  <Clock className="h-3 w-3" />
-                                  <span>{formatNextFunding(row.fundingRates[row.spread.bestBuy].nextTime)}</span>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="text-xs text-gray-500">No data</div>
-                            )}
-                          </div>
-
-                          {/* Sell Exchange Funding Rate */}
-                          <div className="bg-red-900/20 p-2 rounded border border-red-600/30">
-                            <div className="text-xs text-red-400 mb-1">
-                              {currentTranslations.sellExchange} ({row.spread.bestSell})
-                            </div>
-                            {bestSellExchange?.fundingRate ? (
-                              <div className="space-y-1">
-                                <div className={`font-mono text-sm ${getFundingRateColor(bestSellExchange.fundingRate.rate)}`}>
-                                  {formatFundingRate(bestSellExchange.fundingRate.rate)}
-                                </div>
-                                <div className="flex items-center space-x-1 text-xs text-gray-400">
-                                  <Clock className="h-3 w-3" />
-                                  <span>{formatNextFunding(bestSellExchange.fundingRate.nextTime)}</span>
-                                </div>
-                                {bestSellExchange.fundingRate.dataAge !== undefined && (
-                                  <div className="text-xs text-gray-500">
-                                    {bestSellExchange.fundingRate.dataAge}s ago
-                                  </div>
-                                )}
-                              </div>
-                            ) : row.fundingRates?.[row.spread.bestSell] ? (
-                              <div className="space-y-1">
-                                <div className={`font-mono text-sm ${getFundingRateColor(row.fundingRates[row.spread.bestSell].rate)}`}>
-                                  {formatFundingRate(row.fundingRates[row.spread.bestSell].rate)}
-                                </div>
-                                <div className="flex items-center space-x-1 text-xs text-gray-400">
-                                  <Clock className="h-3 w-3" />
-                                  <span>{formatNextFunding(row.fundingRates[row.spread.bestSell].nextTime)}</span>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="text-xs text-gray-500">No data</div>
-                            )}
-                          </div>
+                    {bestSellExchange?.fundingRate && (
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                          {row.spread.bestSell}
                         </div>
-
-                                                 {/* Funding Rate Differential Analysis */}
-                         {bestBuyExchange?.fundingRate && bestSellExchange?.fundingRate && (
-                           <div className="bg-blue-900/20 p-2 rounded border border-blue-600/30">
-                             <div className="text-xs text-blue-400 mb-1">{currentTranslations.fundingDifferential}</div>
-                             <div className="font-mono text-sm text-white">
-                               {(() => {
-                                 const diff = bestSellExchange.fundingRate.rate - bestBuyExchange.fundingRate.rate;
-                                 const annualizedDiff = diff * 365 * 3; // 3 times per day
-                                 return (
-                                   <div className="space-y-1">
-                                     <div className={`${diff >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                       {diff >= 0 ? '+' : ''}{formatFundingRate(diff)}
-                                     </div>
-                                     <div className="text-xs text-gray-400">
-                                       ~{(annualizedDiff * 100).toFixed(2)}% {currentTranslations.annually}
-                                     </div>
-                                   </div>
-                                 );
-                               })()}
-                             </div>
-                           </div>
-                         )}
-                      </div>
-                    ) : row.fundingRate ? (
-                      // Fallback to legacy single funding rate
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xs text-gray-400">{row.fundingRate.exchange}:</span>
-                            <span className={`font-mono text-sm ${getFundingRateColor(row.fundingRate.rate)}`}>
-                              {formatFundingRate(row.fundingRate.rate)}
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-1 text-xs text-gray-400">
-                            <Clock className="h-3 w-3" />
-                            <span>{formatNextFunding(row.fundingRate.nextTime)}</span>
-                          </div>
+                        <div className="font-bold text-gray-800 dark:text-gray-200">
+                          {formatFundingRate(bestSellExchange.fundingRate.rate)}
                         </div>
-                        <div className="text-xs text-yellow-400 bg-yellow-900/20 p-2 rounded border border-yellow-700">
-                          ⚠️ Limited funding rate data available
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-xs text-gray-500 text-center py-2">
-                        No funding rate data available
                       </div>
                     )}
                   </div>
-                )}
-
-                {/* Exchange Prices Grid */}
-                <div className="space-y-2">
-                  <div className="technical-label">{currentTranslations.allExchanges}</div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {exchanges.map(exchange => {
-                      const exchangeData = row.exchanges[exchange];
-                      if (!exchangeData) return null;
-                      
-                      const isHighest = exchange === row.spread.bestSell;
-                      const isLowest = exchange === row.spread.bestBuy;
-                      
-                      return (
-                        <div 
-                          key={exchange} 
-                          className={`p-2 rounded text-xs border ${
-                            isHighest ? 'border-red-500 bg-red-900/20' : 
-                            isLowest ? 'border-green-500 bg-green-900/20' : 
-                            'border-gray-600 bg-gray-800/50'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="font-mono font-semibold text-white">
-                              {exchange}
-                            </div>
-                            {isPerp && (
-                              <div className="flex items-center space-x-1">
-                                {isHighest ? (
-                                  <TrendingUp className="h-3 w-3 text-red-400" />
-                                ) : isLowest ? (
-                                  <TrendingDown className="h-3 w-3 text-green-400" />
-                                ) : null}
-                              </div>
-                            )}
-                          </div>
-                          <div className="technical-value">
-                            ${exchangeData.price.toFixed(exchangeData.price > 1 ? 2 : 6)}
-                          </div>
-                          <div className="text-gray-400 text-xs">
-                            {formatTime(exchangeData.lastUpdated)}
-                          </div>
-                          {/* Show funding rate if available for this exchange */}
-                          {isPerp && exchangeData.fundingRate && (
-                            <div className={`text-xs font-mono ${getFundingRateColor(exchangeData.fundingRate.rate)}`}>
-                              FR: {formatFundingRate(exchangeData.fundingRate.rate)}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Volume */}
-                <div className="flex justify-between items-center pt-2 border-t border-gray-700">
-                  <div className="technical-label">
-                    VOL: {formatNumber(totalVolume, 0)}
-                  </div>
-                  {!isPerp && (
-                    <div className="text-xs text-gray-500">
-                      {currentTranslations.spot}
+                  
+                  {bestBuyExchange?.fundingRate?.nextTime && (
+                    <div className="flex items-center space-x-2 mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                      <Clock className="w-3 h-3 text-gray-400" />
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {currentTranslations.nextFunding}: {formatNextFunding(bestBuyExchange.fundingRate.nextTime)}
+                      </span>
                     </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
+              )}
+            </div>
           );
         })}
       </div>
+
+      {/* No Results for Current Tab */}
+      {sortedData.length === 0 && data.length > 0 && (
+        <div className="text-center py-16">
+          <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-3xl flex items-center justify-center mx-auto mb-6">
+            {activeTab === 'spot' ? (
+              <TrendingUp className="w-10 h-10 text-gray-400" />
+            ) : (
+              <Zap className="w-10 h-10 text-gray-400" />
+            )}
+          </div>
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            No {activeTab === 'spot' ? currentTranslations.spot : currentTranslations.perp} Opportunities
+          </h3>
+          <p className="text-gray-500 dark:text-gray-400">
+            Try switching to a different market type or adjusting your filters
+          </p>
+        </div>
+      )}
     </div>
   );
 } 
