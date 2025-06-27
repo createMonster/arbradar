@@ -20,10 +20,17 @@ const getExchangesByType = (marketType: MarketType): string[] => {
 // Configuration for the data service
 const dataServiceConfig: DataServiceConfig = {
   filterCriteria: {
-    minVolume: 100,
+    minVolume: 50000,  // Increased from 100 to $50K - require meaningful trading activity
     minFundingRateAbs: -1,
     quoteAssets: ['USDT', 'USD', 'USDC'],
-    blacklistedSymbols: ['BULL', 'BEAR', 'UP', 'DOWN', 'HEDGE']
+    blacklistedSymbols: [
+      'BULL', 'BEAR', 'UP', 'DOWN', 'HEDGE',  // Existing blacklist
+      // Add common inactive/problematic token patterns
+      'TEST', 'DEMO',             // Test tokens
+      '2S', '3S', '4S', '5S',     // Leveraged tokens
+      '2L', '3L', '4L', '5L',     // Leveraged tokens
+      'HALF', 'MOON',             // Leveraged/derivative tokens
+    ]
   },
   cacheTtl: CACHE_CONFIG.PROCESSED_DATA_TTL, // 10s TTL for processed arbitrage data
   updateInterval: 60000 // 1 minute background updates

@@ -126,8 +126,39 @@ export class ExchangeService {
     // Check blacklisted symbols
     if (this.filterCriteria.blacklistedSymbols.some(bl => symbol.includes(bl))) return false;
     
-    // Check minimum volume
+    // Enhanced volume filtering - require meaningful trading activity
     if (ticker.quoteVolume && ticker.quoteVolume < this.filterCriteria.minVolume) return false;
+    
+    // Additional data quality checks
+    
+    // Check if price data is valid
+    if (!ticker.last || ticker.last <= 0) {
+      return false;
+    }
+    
+    // Check if there's reasonable price movement (not stale data)
+    if (ticker.high && ticker.low && ticker.high === ticker.low && ticker.last === ticker.high) {
+      // Suspicious: all prices are identical, might be stale/inactive
+      return false;
+    }
+    
+    // Check for reasonable bid-ask spread if available
+    if (ticker.bid && ticker.ask) {
+      const bidAskSpread = ((ticker.ask - ticker.bid) / ticker.bid) * 100;
+      if (bidAskSpread > 10) { // If bid-ask spread > 10%, likely low liquidity
+        return false;
+      }
+    }
+    
+    // Check timestamp freshness if available
+    if (ticker.timestamp) {
+      const dataAge = Date.now() - ticker.timestamp;
+      const maxAgeMs = 5 * 60 * 1000; // 5 minutes
+      if (dataAge > maxAgeMs) {
+        console.log(`⚠️ Stale data for ${symbol}: ${Math.round(dataAge/1000)}s old`);
+        return false;
+      }
+    }
     
     return true;
   }

@@ -55,21 +55,104 @@ export interface FilterOptions {
   limit?: number;
 }
 
+// Enhanced filtering criteria for data quality
+interface DataQualityFilters {
+  maxRealisticSpread: number;        // Maximum realistic spread percentage (e.g., 50%)
+  minVolumePerExchange: number;      // Minimum volume per exchange
+  minTotalVolume: number;            // Minimum total volume across all exchanges
+  maxVolumeRatio: number;            // Maximum volume ratio between exchanges (e.g., 100:1)
+  minExchangeCount: number;          // Minimum number of exchanges required
+  priceValidationThreshold: number;  // Price difference threshold for validation
+}
+
 export class ArbitrageService {
   
+  private dataQualityFilters: DataQualityFilters = {
+    maxRealisticSpread: 50.0,        // 50% max spread - anything higher is likely data quality issue
+    minVolumePerExchange: 10000,     // $10K minimum volume per exchange 
+    minTotalVolume: 50000,           // $50K minimum total volume
+    maxVolumeRatio: 50,              // Max 50:1 volume ratio between exchanges
+    minExchangeCount: 2,             // At least 2 exchanges
+    priceValidationThreshold: 100.0  // Flag if spread > 100% for manual review
+  };
+
   constructor() {}
 
+  /**
+   * Validates if a symbol has quality data across exchanges
+   */
+  private validateDataQuality(symbol: string, prices: any[], exchangeInfo: { [key: string]: ExchangeData }): boolean {
+    // Check minimum exchange count
+    if (prices.length < this.dataQualityFilters.minExchangeCount) {
+      return false;
+    }
+
+    // Check volume requirements
+    const volumes = prices.map(p => p.volume).filter(v => v > 0);
+    if (volumes.length === 0) {
+      console.log(`⚠️ ${symbol}: No volume data available`);
+      return false;
+    }
+
+    // Check minimum volume per exchange
+    const hasInsufficientVolume = prices.some(p => p.volume < this.dataQualityFilters.minVolumePerExchange);
+    if (hasInsufficientVolume) {
+      console.log(`⚠️ ${symbol}: Exchange with volume < $${this.dataQualityFilters.minVolumePerExchange}`);
+      return false;
+    }
+
+    // Check total volume
+    const totalVolume = volumes.reduce((sum, vol) => sum + vol, 0);
+    if (totalVolume < this.dataQualityFilters.minTotalVolume) {
+      console.log(`⚠️ ${symbol}: Total volume ${totalVolume} < $${this.dataQualityFilters.minTotalVolume}`);
+      return false;
+    }
+
+    // Check volume ratio (detect when one exchange has extremely low volume)
+    const maxVolume = Math.max(...volumes);
+    const minVolume = Math.min(...volumes);
+    if (maxVolume / minVolume > this.dataQualityFilters.maxVolumeRatio) {
+      console.log(`⚠️ ${symbol}: Volume ratio ${(maxVolume/minVolume).toFixed(1)}:1 exceeds max ${this.dataQualityFilters.maxVolumeRatio}:1`);
+      return false;
+    }
+
+    // Check price sanity
+    prices.sort((a, b) => a.price - b.price);
+    const minPrice = prices[0].price;
+    const maxPrice = prices[prices.length - 1].price;
+    const percentageSpread = ((maxPrice - minPrice) / minPrice) * 100;
+
+    // Filter out extreme spreads (likely inactive tokens)
+    if (percentageSpread > this.dataQualityFilters.maxRealisticSpread) {
+      console.log(`⚠️ ${symbol}: Spread ${percentageSpread.toFixed(2)}% exceeds realistic limit ${this.dataQualityFilters.maxRealisticSpread}%`);
+      return false;
+    }
+
+    // Flag for manual review if spread is very high but under max limit
+    if (percentageSpread > this.dataQualityFilters.priceValidationThreshold) {
+      console.log(`🔍 ${symbol}: High spread ${percentageSpread.toFixed(2)}% - manual review recommended`);
+    }
+
+    return true;
+  }
+
+  /**
+   * Enhanced spread calculation with data quality validation
+   */
   public calculatePriceSpreads(allTickers: any, allFundingRates: any): SpreadData[] {
-    console.log('🔄 Calculating price spreads...');
+    console.log('🔄 Calculating price spreads with enhanced filtering...');
     
     const spreads: SpreadData[] = [];
     const symbolMap: any = {};
+    let totalSymbols = 0;
+    let qualityRejected = 0;
     
     // Group tickers by symbol across exchanges
     Object.entries(allTickers).forEach(([exchangeName, tickers]: [string, any]) => {
       Object.entries(tickers).forEach(([symbol, ticker]: [string, any]) => {
         if (!symbolMap[symbol]) {
           symbolMap[symbol] = {};
+          totalSymbols++;
         }
         symbolMap[symbol][exchangeName] = {
           ticker,
@@ -77,6 +160,8 @@ export class ArbitrageService {
         };
       });
     });
+    
+    console.log(`📊 Processing ${totalSymbols} unique symbols...`);
     
     // Calculate spreads for symbols available on multiple exchanges
     Object.entries(symbolMap).forEach(([symbol, exchangeData]: [string, any]) => {
@@ -88,7 +173,7 @@ export class ArbitrageService {
         
         exchangeNames.forEach(exchangeName => {
           const data = exchangeData[exchangeName];
-          if (data.ticker && data.ticker.last) {
+          if (data.ticker && data.ticker.last && data.ticker.last > 0) {
             prices.push({
               price: data.ticker.last,
               exchange: exchangeName,
@@ -111,6 +196,12 @@ export class ArbitrageService {
         });
         
         if (prices.length >= 2) {
+          // Apply data quality validation
+          if (!this.validateDataQuality(symbol, prices, exchangeInfo)) {
+            qualityRejected++;
+            return; // Skip this symbol
+          }
+
           prices.sort((a, b) => a.price - b.price);
           
           const minPrice = prices[0].price;
@@ -127,8 +218,8 @@ export class ArbitrageService {
             (exchangeInfo[minExchange]?.fundingRate || 0)
           ) * 100;
           
-          // Only include meaningful spreads
-          if (percentageSpread > 0.01) { // > 0.01%
+          // Only include meaningful spreads (but now with proper upper bounds)
+          if (percentageSpread > 0.01 && percentageSpread <= this.dataQualityFilters.maxRealisticSpread) {
             spreads.push({
               symbol,
               exchanges: exchangeInfo,
@@ -167,9 +258,14 @@ export class ArbitrageService {
     // Sort by price spread percentage descending
     spreads.sort((a, b) => b.priceSpread.percentage - a.priceSpread.percentage);
     
-    console.log(`🎯 Found ${spreads.length} arbitrage opportunities`);
+    console.log(`🎯 Data Quality Summary:`);
+    console.log(`   • Total symbols processed: ${totalSymbols}`);
+    console.log(`   • Quality filtered out: ${qualityRejected}`);
+    console.log(`   • Valid arbitrage opportunities: ${spreads.length}`);
+    
     if (spreads.length > 0) {
-      console.log(`🏆 Best: ${spreads[0].symbol} - ${spreads[0].priceSpread.percentage.toFixed(4)}%`);
+      console.log(`🏆 Best opportunity: ${spreads[0].symbol} - ${spreads[0].priceSpread.percentage.toFixed(4)}%`);
+      console.log(`📈 Average spread: ${(spreads.reduce((sum, s) => sum + s.priceSpread.percentage, 0) / spreads.length).toFixed(4)}%`);
     }
     
     return spreads;
