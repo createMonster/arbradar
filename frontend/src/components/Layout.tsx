@@ -71,17 +71,17 @@ export default function Layout({ children, language, onLanguageChange }: LayoutP
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="apple-header">
+      <header className="italian-header">
         <div className="container mx-auto px-6">
           <div className="flex h-16 items-center justify-between">
             {/* Logo and Title */}
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-apple-blue to-apple-indigo rounded-xl flex items-center justify-center shadow-apple">
+                <div className="w-8 h-8 bg-italian-sky-500 rounded-xl flex items-center justify-center shadow-lg">
                   <Cpu className="w-5 h-5 text-white" />
                 </div>
                 <div className="flex flex-col">
-                  <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+                  <h1 className="text-xl font-bold text-primary-solid tracking-tight">
                     {currentTranslations.title}
                   </h1>
                   <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
@@ -98,18 +98,18 @@ export default function Layout({ children, language, onLanguageChange }: LayoutP
                 variant="ghost"
                 size="sm"
                 onClick={toggleDarkMode}
-                className="apple-button-secondary h-10 w-10 p-0"
+                className="italian-button-secondary h-10 w-10 p-0 transition-italian"
               >
                 {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
 
               {/* Language Toggle */}
               <Select value={language} onValueChange={(value: Language) => onLanguageChange(value)}>
-                <SelectTrigger className="apple-input w-[140px] h-10">
-                  <Globe className="mr-2 h-4 w-4 text-apple-blue" />
+                <SelectTrigger className="italian-input w-[140px] h-10">
+                  <Globe className="mr-2 h-4 w-4 text-italian-sky-500" />
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="apple-card border-0">
+                <SelectContent className="italian-card border-0">
                   <SelectItem value="en">{currentTranslations.english}</SelectItem>
                   <SelectItem value="zh">{currentTranslations.chinese}</SelectItem>
                 </SelectContent>
@@ -118,12 +118,12 @@ export default function Layout({ children, language, onLanguageChange }: LayoutP
               {/* Settings */}
               <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
                 <DialogTrigger asChild>
-                  <Button className="apple-button-secondary h-10 px-4">
+                  <Button className="italian-button-secondary h-10 px-4 transition-italian">
                     <Settings className="mr-2 h-4 w-4" />
                     {currentTranslations.settings}
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="apple-card border-0 sm:max-w-[425px]">
+                <DialogContent className="italian-card border-0 sm:max-w-[425px]">
                   <DialogHeader>
                     <DialogTitle className="text-xl font-semibold">
                       {currentTranslations.settings}
@@ -135,10 +135,10 @@ export default function Layout({ children, language, onLanguageChange }: LayoutP
                         {currentTranslations.language}
                       </label>
                       <Select value={language} onValueChange={(value: Language) => onLanguageChange(value)}>
-                        <SelectTrigger className="apple-input">
+                        <SelectTrigger className="italian-input">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="apple-card border-0">
+                        <SelectContent className="italian-card border-0">
                           <SelectItem value="en">{currentTranslations.english}</SelectItem>
                           <SelectItem value="zh">{currentTranslations.chinese}</SelectItem>
                         </SelectContent>
@@ -154,10 +154,10 @@ export default function Layout({ children, language, onLanguageChange }: LayoutP
                           toggleDarkMode();
                         }
                       }}>
-                        <SelectTrigger className="apple-input">
+                        <SelectTrigger className="italian-input">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="apple-card border-0">
+                        <SelectContent className="italian-card border-0">
                           <SelectItem value="light">{currentTranslations.light}</SelectItem>
                           <SelectItem value="dark">{currentTranslations.dark}</SelectItem>
                         </SelectContent>
@@ -169,10 +169,10 @@ export default function Layout({ children, language, onLanguageChange }: LayoutP
                         {currentTranslations.updateInterval}
                       </label>
                       <Select defaultValue="50">
-                        <SelectTrigger className="apple-input">
+                        <SelectTrigger className="italian-input">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent className="apple-card border-0">
+                        <SelectContent className="italian-card border-0">
                           <SelectItem value="10">10 {currentTranslations.seconds}</SelectItem>
                           <SelectItem value="30">30 {currentTranslations.seconds}</SelectItem>
                           <SelectItem value="50">50 {currentTranslations.seconds}</SelectItem>
@@ -189,12 +189,12 @@ export default function Layout({ children, language, onLanguageChange }: LayoutP
             <div className="md:hidden">
               <Sheet>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="sm" className="apple-button-secondary h-10 w-10 p-0">
+                  <Button variant="ghost" size="sm" className="italian-button-secondary h-10 w-10 p-0 transition-italian">
                     <Menu className="h-4 w-4" />
                     <span className="sr-only">{currentTranslations.menu}</span>
                   </Button>
                 </SheetTrigger>
-                <SheetContent className="apple-card border-0">
+                <SheetContent className="italian-card border-0">
                   <div className="flex flex-col space-y-6 mt-8">
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-gray-700 dark:text-gray-300">

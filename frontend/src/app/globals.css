@@ -10,49 +10,49 @@
 
 @layer base {
   :root {
-    /* Apple-inspired design tokens */
-    --background: 218 27% 94%;
+    /* Italian Summer design tokens with rich lemon-yellow backgrounds */
+    --background: 48 100% 95%;
     --foreground: 215 25% 27%;
-    --card: 0 0% 100%;
+    --card: 48 100% 98%;
     --card-foreground: 215 25% 27%;
-    --popover: 0 0% 100%;
+    --popover: 48 100% 98%;
     --popover-foreground: 215 25% 27%;
-    --primary: 213 100% 50%;
+    --primary: 199 89% 48%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 215 25% 97%;
+    --secondary: 48 100% 92%;
     --secondary-foreground: 215 25% 27%;
-    --muted: 215 25% 97%;
+    --muted: 48 100% 94%;
     --muted-foreground: 215 13% 54%;
-    --accent: 215 25% 97%;
+    --accent: 48 100% 90%;
     --accent-foreground: 215 25% 27%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 215 28% 88%;
-    --input: 215 28% 88%;
-    --ring: 213 100% 50%;
+    --border: 48 100% 85%;
+    --input: 48 100% 96%;
+    --ring: 199 89% 48%;
     --radius: 0.5rem;
   }
 
   .dark {
     --background: 215 28% 8%;
-    --foreground: 215 25% 95%;
+    --foreground: 48 100% 95%;
     --card: 215 28% 10%;
-    --card-foreground: 215 25% 95%;
+    --card-foreground: 48 100% 95%;
     --popover: 215 28% 10%;
-    --popover-foreground: 215 25% 95%;
-    --primary: 213 100% 50%;
+    --popover-foreground: 48 100% 95%;
+    --primary: 199 89% 48%;
     --primary-foreground: 0 0% 100%;
     --secondary: 215 28% 16%;
-    --secondary-foreground: 215 25% 95%;
+    --secondary-foreground: 48 100% 95%;
     --muted: 215 28% 16%;
     --muted-foreground: 215 13% 65%;
     --accent: 215 28% 16%;
-    --accent-foreground: 215 25% 95%;
+    --accent-foreground: 48 100% 95%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     --border: 215 28% 20%;
     --input: 215 28% 20%;
-    --ring: 213 100% 50%;
+    --ring: 199 89% 48%;
   }
 }
 
@@ -73,170 +73,268 @@
     text-rendering: optimizeLegibility;
   }
   
-  /* Dark mode background with subtle pattern */
+  /* Dark mode background with subtle warmth */
   .dark body {
+    background: linear-gradient(135deg, 
+      #0f172a 0%, 
+      #1e293b 25%, 
+      #0f4c75 50%, 
+      #1e293b 75%, 
+      #0f172a 100%);
     background-image: 
-      radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.08) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.04) 0%, transparent 50%),
-      radial-gradient(circle at 40% 80%, rgba(120, 119, 198, 0.06) 0%, transparent 50%);
+      radial-gradient(circle at 20% 50%, rgba(255, 221, 0, 0.03) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(14, 165, 233, 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 40% 80%, rgba(249, 115, 22, 0.02) 0%, transparent 50%);
     background-attachment: fixed;
   }
   
-  /* Light mode background */
+  /* Light mode with rich lemon-yellow background */
   body:not(.dark) {
+    background: linear-gradient(135deg, 
+      #ffdd00 0%, 
+      #ffe74c 25%, 
+      #fff4c4 50%, 
+      #fffbeb 75%, 
+      #fffef7 100%);
     background-image: 
-      radial-gradient(circle at 20% 50%, rgba(0, 122, 255, 0.04) 0%, transparent 50%),
-      radial-gradient(circle at 80% 20%, rgba(88, 86, 214, 0.03) 0%, transparent 50%);
+      radial-gradient(circle at 30% 60%, rgba(14, 165, 233, 0.08) 0%, transparent 40%),
+      radial-gradient(circle at 70% 30%, rgba(249, 115, 22, 0.05) 0%, transparent 40%),
+      radial-gradient(circle at 50% 80%, rgba(34, 197, 94, 0.03) 0%, transparent 40%);
     background-attachment: fixed;
   }
 }
 
 @layer components {
-  /* Apple-style glass morphism card */
-  .apple-card {
-    @apply bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border border-gray-200/50 dark:border-gray-700/50 rounded-2xl shadow-apple-lg;
+  /* Italian summer glass morphism card with airy feel */
+  .italian-card {
+    @apply bg-white/60 dark:bg-gray-900/80 backdrop-blur-md border border-italian-lemon-300/30 dark:border-italian-sky-700/50 rounded-2xl shadow-lg;
     background-image: linear-gradient(135deg, 
-      rgba(255, 255, 255, 0.3) 0%, 
-      rgba(255, 255, 255, 0.1) 100%);
+      rgba(255, 255, 255, 0.8) 0%, 
+      rgba(255, 221, 0, 0.1) 50%,
+      rgba(14, 165, 233, 0.05) 100%);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
-  .dark .apple-card {
+  .dark .italian-card {
     background-image: linear-gradient(135deg, 
-      rgba(255, 255, 255, 0.1) 0%, 
-      rgba(255, 255, 255, 0.05) 100%);
+      rgba(255, 221, 0, 0.08) 0%, 
+      rgba(14, 165, 233, 0.06) 50%,
+      rgba(249, 115, 22, 0.04) 100%);
   }
   
-  /* Apple-style button */
-  .apple-button {
-    @apply inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
-    @apply bg-apple-blue hover:bg-apple-blue/90 text-white shadow-apple active:scale-95;
+  /* Italian summer button */
+  .italian-button {
+    @apply inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+    @apply bg-italian-sky-500 hover:bg-italian-sky-600 text-white shadow-lg hover:shadow-xl active:scale-95 transform;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
-  /* Apple-style secondary button */
-  .apple-button-secondary {
-    @apply inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
-    @apply bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-apple active:scale-95;
+  /* Italian summer secondary button */
+  .italian-button-secondary {
+    @apply inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+    @apply bg-white/80 dark:bg-gray-800 hover:bg-white dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-md hover:shadow-lg active:scale-95 transform border border-italian-lemon-200/50 dark:border-gray-700;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
-  /* Apple-style input */
-  .apple-input {
-    @apply flex h-12 w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm px-4 py-3 text-sm ring-offset-background transition-colors;
+  /* Italian summer accent button */
+  .italian-button-accent {
+    @apply inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-medium ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+    @apply bg-italian-sunset-500 hover:bg-italian-sunset-600 text-white shadow-lg hover:shadow-xl active:scale-95 transform;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Italian summer input */
+  .italian-input {
+    @apply flex h-12 w-full rounded-xl border border-italian-lemon-300/50 dark:border-gray-700 bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm px-4 py-3 text-sm ring-offset-background transition-all duration-300;
     @apply file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground;
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-apple-blue focus-visible:ring-offset-2;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-italian-sky-400 focus-visible:ring-offset-1 focus-visible:border-italian-sky-400;
     @apply disabled:cursor-not-allowed disabled:opacity-50;
+    box-shadow: 0 0 0 0 rgba(14, 165, 233, 0);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
   }
   
-  /* Apple-style header */
-  .apple-header {
-    @apply sticky top-0 z-50 w-full border-b border-gray-200/50 dark:border-gray-700/50;
-    @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/80 dark:supports-[backdrop-filter]:bg-gray-900/80;
+  .italian-input:focus {
+    box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.1);
   }
   
-  /* Apple-style section */
-  .apple-section {
+  /* Italian summer header */
+  .italian-header {
+    @apply sticky top-0 z-50 w-full border-b border-italian-lemon-300/30 dark:border-gray-700/50;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  
+  .dark .italian-header {
+    background: rgba(15, 23, 42, 0.85);
+  }
+  
+  /* Italian summer section */
+  .italian-section {
     @apply py-16 px-6;
   }
   
-  /* Apple-style hero text */
-  .apple-hero {
-    @apply text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight bg-gradient-to-br from-gray-900 via-gray-800 to-gray-700 dark:from-white dark:via-gray-200 dark:to-gray-400 bg-clip-text text-transparent;
+  /* Smaller, solid color hero text */
+  .italian-hero {
+    @apply text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-gray-900 dark:text-white;
   }
   
-  /* Apple-style subtext */
-  .apple-subtext {
-    @apply text-xl md:text-2xl text-gray-600 dark:text-gray-400 font-normal leading-relaxed;
+  /* Italian summer subtext */
+  .italian-subtext {
+    @apply text-lg md:text-xl text-gray-700 dark:text-gray-300 font-normal leading-relaxed;
   }
   
-  /* Apple-style table */
-  .apple-table {
+  /* Italian summer table */
+  .italian-table {
     @apply w-full border-collapse;
   }
   
-  .apple-table thead {
-    @apply bg-gray-50/50 dark:bg-gray-800/50 backdrop-blur-sm;
+  .italian-table thead {
+    background: linear-gradient(135deg, 
+      rgba(255, 255, 255, 0.9) 0%, 
+      rgba(255, 221, 0, 0.1) 100%);
+    backdrop-filter: blur(10px);
   }
   
-  .apple-table th {
-    @apply px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 border-b border-gray-200 dark:border-gray-700;
+  .italian-table th {
+    @apply px-6 py-4 text-left text-sm font-semibold text-gray-900 dark:text-gray-100 border-b border-italian-lemon-200/50 dark:border-gray-700;
   }
   
-  .apple-table td {
-    @apply px-6 py-4 text-sm text-gray-600 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800;
+  .italian-table td {
+    @apply px-6 py-4 text-sm text-gray-700 dark:text-gray-300 border-b border-italian-lemon-100/50 dark:border-gray-800;
+    background: rgba(255, 255, 255, 0.3);
+    transition: all 0.2s ease;
   }
   
-  .apple-table tbody tr {
-    @apply hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors duration-150;
+  .italian-table tbody tr:nth-child(even) td {
+    background: rgba(255, 221, 0, 0.08);
   }
   
-  /* Status indicators */
+  .italian-table tbody tr:nth-child(odd) td {
+    background: rgba(14, 165, 233, 0.05);
+  }
+  
+  .italian-table tbody tr:hover td {
+    background: rgba(249, 115, 22, 0.1);
+    transform: translateY(-1px);
+  }
+  
+  /* Status indicators with solid colors */
   .status-online {
-    @apply inline-flex items-center gap-2 text-apple-green;
+    @apply inline-flex items-center gap-2 text-italian-sage-600;
   }
   
   .status-offline {
-    @apply inline-flex items-center gap-2 text-apple-red;
+    @apply inline-flex items-center gap-2 text-italian-coral-600;
   }
   
   .status-checking {
-    @apply inline-flex items-center gap-2 text-apple-orange;
+    @apply inline-flex items-center gap-2 text-italian-sunset-600;
   }
   
-  /* Apple-style animations */
+  /* Solid color text utilities */
+  .text-primary-solid {
+    @apply text-italian-sky-600 dark:text-italian-sky-400;
+  }
+  
+  .text-accent-solid {
+    @apply text-italian-sunset-600 dark:text-italian-sunset-400;
+  }
+  
+  .text-warm-solid {
+    @apply text-italian-coral-600 dark:text-italian-coral-400;
+  }
+  
+  /* Italian summer animations */
   .animate-breath {
-    animation: breath 2s ease-in-out infinite;
+    animation: breath 3s ease-in-out infinite;
   }
   
   @keyframes breath {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
+    0%, 100% { 
+      transform: scale(1);
+      filter: brightness(1);
+    }
+    50% { 
+      transform: scale(1.01);
+      filter: brightness(1.02);
+    }
   }
   
-  /* Smooth transitions */
-  .transition-apple {
-    @apply transition-all duration-300 ease-out;
+  /* Smooth Italian transitions */
+  .transition-italian {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
-  /* Loading states */
+  /* Loading states with Italian theme */
   .loading-shimmer {
-    @apply animate-pulse bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 dark:from-gray-700 dark:via-gray-600 dark:to-gray-700;
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(90deg, 
+      rgba(255, 255, 255, 0.8) 0%, 
+      rgba(255, 221, 0, 0.2) 50%, 
+      rgba(255, 255, 255, 0.8) 100%);
+  }
+  
+  .loading-shimmer::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, 
+      transparent 0%, 
+      rgba(255, 255, 255, 0.6) 50%, 
+      transparent 100%);
+    animation: shimmer 2s infinite;
   }
   
   @keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
+    0% { left: -100%; }
+    100% { left: 100%; }
+  }
+  
+  /* Floating elements */
+  .float-element {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-5px); }
   }
 }
 
-/* Custom scrollbar */
+/* Scrollbar styling with Italian summer theme */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 4px;
+  background: rgba(255, 221, 0, 0.1);
+  border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
+  background: linear-gradient(135deg, #0ea5e9, #ffdd00);
+  border-radius: 10px;
+  transition: all 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
+  background: linear-gradient(135deg, #0284c7, #e6c400);
 }
 
 .dark ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(14, 165, 233, 0.1);
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, #0ea5e9, #ffdd00);
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: linear-gradient(135deg, #38bdf8, #ffe74c);
 }

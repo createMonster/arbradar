@@ -1,3 +1,6 @@
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   try {
     // Use the internal Docker network address (server-side env var)

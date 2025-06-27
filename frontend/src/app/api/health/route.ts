@@ -1,3 +1,6 @@
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const backendUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';

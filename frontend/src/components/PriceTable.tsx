@@ -136,15 +136,15 @@ export default function PriceTable({ data, filters, language, isLoading = false,
   }) => (
     <button
       onClick={onClick}
-      className={`
-        relative px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-300 ease-out
+              className={`
+        relative px-6 py-3 rounded-xl font-semibold text-sm transition-italian
         ${isActive 
-          ? 'bg-gray-900 text-white shadow-lg shadow-gray-900/25 scale-105' 
-          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-200'
+          ? 'bg-italian-sky-500 text-white shadow-lg scale-105' 
+          : 'bg-white/80 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-white dark:hover:bg-gray-700 border border-italian-lemon-200/50 dark:border-gray-700'
         }
         flex items-center space-x-2 min-w-[120px] justify-center
         active:scale-95 hover:scale-105 transform
-        focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900
+        focus:outline-none focus:ring-2 focus:ring-italian-sky-500 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-gray-900
       `}
     >
       <span>{label}</span>
@@ -152,9 +152,9 @@ export default function PriceTable({ data, filters, language, isLoading = false,
         className={`
           ${isActive 
             ? 'bg-white/20 text-white border-white/30' 
-            : 'bg-gray-600 text-white border-0'
+            : 'bg-italian-sunset-500 text-white border-0'
           }
-          text-xs font-bold px-2 py-0.5 rounded-full min-w-[24px] flex items-center justify-center
+          text-xs font-bold px-2 py-0.5 rounded-full min-w-[24px] flex items-center justify-center transition-italian
         `}
       >
         {count}
@@ -162,7 +162,7 @@ export default function PriceTable({ data, filters, language, isLoading = false,
       
       {/* Active indicator */}
       {isActive && (
-        <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white rounded-full shadow-sm" />
+        <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-italian-sunset-400 rounded-full shadow-md" />
       )}
     </button>
   );
@@ -173,18 +173,18 @@ export default function PriceTable({ data, filters, language, isLoading = false,
       <div className="space-y-6">
         {/* Tab Headers */}
         <div className="flex items-center justify-center space-x-3 p-6">
-          <div className="h-12 w-32 bg-gray-200 dark:bg-gray-700 rounded-xl loading-shimmer" />
-          <div className="h-12 w-32 bg-gray-200 dark:bg-gray-700 rounded-xl loading-shimmer" />
-          <div className="h-12 w-32 bg-gray-200 dark:bg-gray-700 rounded-xl loading-shimmer" />
+          <div className="h-12 w-32 bg-italian-lemon-200 dark:bg-gray-700 rounded-xl loading-shimmer" />
+          <div className="h-12 w-32 bg-italian-sky-200 dark:bg-gray-700 rounded-xl loading-shimmer" />
+          <div className="h-12 w-32 bg-italian-sunset-200 dark:bg-gray-700 rounded-xl loading-shimmer" />
         </div>
         
         {/* Loading Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="apple-card p-6 space-y-4">
-              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-lg loading-shimmer" />
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded loading-shimmer" />
-              <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded-lg loading-shimmer" />
+            <div key={i} className="italian-card p-6 space-y-4">
+              <div className="h-6 bg-italian-lemon-200 dark:bg-gray-700 rounded-lg loading-shimmer" />
+              <div className="h-4 bg-italian-sky-200 dark:bg-gray-700 rounded loading-shimmer" />
+              <div className="h-16 bg-italian-sunset-200 dark:bg-gray-700 rounded-lg loading-shimmer" />
             </div>
           ))}
         </div>
@@ -223,8 +223,8 @@ export default function PriceTable({ data, filters, language, isLoading = false,
         
         {/* Empty State */}
         <div className="text-center py-16">
-          <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-3xl flex items-center justify-center mx-auto mb-6">
-            <Activity className="w-10 h-10 text-gray-400" />
+          <div className="w-20 h-20 bg-italian-lemon-100 dark:bg-gray-700 rounded-3xl flex items-center justify-center mx-auto mb-6">
+            <Activity className="w-10 h-10 text-italian-sky-500" />
           </div>
           <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
             {currentTranslations.noData}
@@ -242,8 +242,8 @@ export default function PriceTable({ data, filters, language, isLoading = false,
 
   return (
     <div className="space-y-8">
-      {/* Steve Jobs-inspired Tab Navigation */}
-      <div className="flex items-center justify-center space-x-4 p-6 bg-gradient-to-r from-gray-50 via-white to-gray-50 dark:from-gray-800 dark:via-gray-900 dark:to-gray-800 rounded-2xl border border-gray-200/50 dark:border-gray-700/50">
+      {/* Italian Summer Tab Navigation */}
+      <div className="flex items-center justify-center space-x-4 p-6 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md rounded-2xl border border-italian-lemon-200/30 dark:border-gray-700/50">
         <TabButton
           type="all"
           label={currentTranslations.all}
@@ -285,7 +285,7 @@ export default function PriceTable({ data, filters, language, isLoading = false,
           return (
             <div 
               key={row.symbol} 
-              className="apple-card p-6 space-y-6 hover:scale-105 transition-apple cursor-pointer group"
+              className="italian-card p-6 space-y-6 hover:scale-105 transition-italian cursor-pointer group"
             >
               {/* Header */}
               <div className="flex items-center justify-between">
@@ -318,32 +318,32 @@ export default function PriceTable({ data, filters, language, isLoading = false,
 
               {/* Buy/Sell Actions */}
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-xl border border-green-200 dark:border-green-700">
+                <div className="bg-italian-sage-50 dark:bg-italian-sage-900/20 p-4 rounded-xl border border-italian-sage-200/50 dark:border-italian-sage-700 transition-italian hover:bg-italian-sage-100 dark:hover:bg-italian-sage-800/30">
                   <div className="flex items-center space-x-2 mb-2">
-                    <ArrowDownLeft className="w-4 h-4 text-green-600 dark:text-green-400" />
-                    <span className="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider">
+                    <ArrowDownLeft className="w-4 h-4 text-italian-sage-600 dark:text-italian-sage-400" />
+                    <span className="text-xs font-semibold text-italian-sage-600 dark:text-italian-sage-400 uppercase tracking-wider">
                       {currentTranslations.buyFrom}
                     </span>
                   </div>
-                  <div className="font-bold text-green-900 dark:text-green-100 mb-1">
+                  <div className="font-bold text-italian-sage-900 dark:text-italian-sage-100 mb-1">
                     {row.spread.bestBuy}
                   </div>
-                  <div className="text-lg font-bold font-sf text-green-800 dark:text-green-200">
+                  <div className="text-lg font-bold font-sf text-italian-sage-800 dark:text-italian-sage-200">
                     ${bestBuyExchange?.price.toFixed(bestBuyExchange.price > 1 ? 2 : 6)}
                   </div>
                 </div>
                 
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-700">
+                <div className="bg-italian-sky-50 dark:bg-italian-sky-900/20 p-4 rounded-xl border border-italian-sky-200/50 dark:border-italian-sky-700 transition-italian hover:bg-italian-sky-100 dark:hover:bg-italian-sky-800/30">
                   <div className="flex items-center space-x-2 mb-2">
-                    <ArrowUpRight className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
+                    <ArrowUpRight className="w-4 h-4 text-italian-sky-600 dark:text-italian-sky-400" />
+                    <span className="text-xs font-semibold text-italian-sky-600 dark:text-italian-sky-400 uppercase tracking-wider">
                       {currentTranslations.sellTo}
                     </span>
                   </div>
-                  <div className="font-bold text-blue-900 dark:text-blue-100 mb-1">
+                  <div className="font-bold text-italian-sky-900 dark:text-italian-sky-100 mb-1">
                     {row.spread.bestSell}
                   </div>
-                  <div className="text-lg font-bold font-sf text-blue-800 dark:text-blue-200">
+                  <div className="text-lg font-bold font-sf text-italian-sky-800 dark:text-italian-sky-200">
                     ${bestSellExchange?.price.toFixed(bestSellExchange.price > 1 ? 2 : 6)}
                   </div>
                 </div>
@@ -351,10 +351,10 @@ export default function PriceTable({ data, filters, language, isLoading = false,
 
               {/* Funding Rate Section for Perp */}
               {isPerp && (bestBuyExchange?.fundingRate || bestSellExchange?.fundingRate) && (
-                <div className="bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 p-4 rounded-xl border border-purple-200 dark:border-purple-700">
+                <div className="bg-italian-sunset-50 dark:bg-italian-sunset-900/20 p-4 rounded-xl border border-italian-sunset-200/50 dark:border-italian-sunset-700 transition-italian hover:bg-italian-sunset-100 dark:hover:bg-italian-sunset-800/30">
                   <div className="flex items-center space-x-2 mb-3">
-                    <Zap className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-                    <span className="text-xs font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wider">
+                    <Zap className="w-4 h-4 text-italian-sunset-600 dark:text-italian-sunset-400" />
+                    <span className="text-xs font-semibold text-italian-sunset-600 dark:text-italian-sunset-400 uppercase tracking-wider">
                       {currentTranslations.fundingRate}
                     </span>
                   </div>
@@ -362,10 +362,10 @@ export default function PriceTable({ data, filters, language, isLoading = false,
                   <div className="grid grid-cols-2 gap-3">
                     {bestBuyExchange?.fundingRate && (
                       <div>
-                        <div className="text-xs text-purple-500 dark:text-purple-400 mb-1">
+                        <div className="text-xs text-italian-sunset-500 dark:text-italian-sunset-400 mb-1">
                           {row.spread.bestBuy}
                         </div>
-                        <div className="font-bold text-purple-800 dark:text-purple-200">
+                        <div className="font-bold text-italian-sunset-800 dark:text-italian-sunset-200">
                           {formatFundingRate(bestBuyExchange.fundingRate.rate)}
                         </div>
                       </div>
@@ -373,10 +373,10 @@ export default function PriceTable({ data, filters, language, isLoading = false,
                     
                     {bestSellExchange?.fundingRate && (
                       <div>
-                        <div className="text-xs text-purple-500 dark:text-purple-400 mb-1">
+                        <div className="text-xs text-italian-sunset-500 dark:text-italian-sunset-400 mb-1">
                           {row.spread.bestSell}
                         </div>
-                        <div className="font-bold text-purple-800 dark:text-purple-200">
+                        <div className="font-bold text-italian-sunset-800 dark:text-italian-sunset-200">
                           {formatFundingRate(bestSellExchange.fundingRate.rate)}
                         </div>
                       </div>
@@ -384,9 +384,9 @@ export default function PriceTable({ data, filters, language, isLoading = false,
                   </div>
                   
                   {bestBuyExchange?.fundingRate?.nextTime && (
-                    <div className="flex items-center space-x-2 mt-3 pt-3 border-t border-purple-200 dark:border-purple-700">
-                      <Clock className="w-3 h-3 text-purple-400" />
-                      <span className="text-xs text-purple-500 dark:text-purple-400">
+                    <div className="flex items-center space-x-2 mt-3 pt-3 border-t border-italian-sunset-200/50 dark:border-italian-sunset-700">
+                      <Clock className="w-3 h-3 text-italian-sunset-400" />
+                      <span className="text-xs text-italian-sunset-500 dark:text-italian-sunset-400">
                         {currentTranslations.nextFunding}: {formatNextFunding(bestBuyExchange.fundingRate.nextTime)}
                       </span>
                     </div>

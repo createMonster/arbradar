@@ -92,24 +92,24 @@ export default function Home() {
   return (
     <Layout language={language} onLanguageChange={handleLanguageChange}>
       {/* Compact Hero Section */}
-      <section className="py-12 px-6 bg-gradient-to-br from-white via-gray-50 to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-blue-900/20">
+      <section className="py-12 px-6 bg-gradient-to-br from-italian-lemon-50 via-white to-italian-sky-50 dark:from-gray-900 dark:via-gray-900 dark:to-italian-sky-900/20">
         <div className="container mx-auto text-center">
           <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
             <div className="space-y-3">
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight bg-gradient-to-br from-gray-900 via-gray-800 to-gray-700 dark:from-white dark:via-gray-200 dark:to-gray-400 bg-clip-text text-transparent">
+              <h1 className="italian-hero">
                 {currentTranslations.hero}{' '}
-                <span className="bg-gradient-to-r from-apple-blue to-apple-indigo bg-clip-text text-transparent">
+                <span className="text-accent-solid">
                   {currentTranslations.heroHighlight}
                 </span>
               </h1>
-              <p className="text-lg md:text-xl text-gray-600 dark:text-gray-400 font-normal leading-relaxed max-w-xl mx-auto">
+              <p className="italian-subtext max-w-xl mx-auto">
                 {currentTranslations.subtitle}
               </p>
             </div>
             
             <button 
               onClick={fetchData}
-              className="apple-button px-6 py-3 text-base font-medium rounded-xl shadow-apple-lg hover:shadow-apple-xl transform hover:scale-105 transition-all duration-300"
+              className="italian-button px-6 py-3 text-base font-medium rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-italian float-element"
             >
               <Activity className="mr-2 h-4 w-4" />
               {currentTranslations.getStarted}
@@ -122,7 +122,7 @@ export default function Home() {
       <section className="py-8">
         <div className="container mx-auto px-6">
           {/* Status Bar */}
-          <div className="apple-card p-6 mb-6">
+          <div className="italian-card p-6 mb-6 transition-italian">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center space-x-4">
                 <div className={`flex items-center space-x-2 ${
@@ -130,8 +130,8 @@ export default function Home() {
                   connectionStatus === 'disconnected' ? 'status-offline' : 'status-checking'
                 }`}>
                   <div className={`w-2 h-2 rounded-full ${
-                    connectionStatus === 'connected' ? 'bg-apple-green animate-pulse' :
-                    connectionStatus === 'disconnected' ? 'bg-apple-red' : 'bg-apple-orange'
+                    connectionStatus === 'connected' ? 'bg-italian-sage-500 animate-pulse' :
+                    connectionStatus === 'disconnected' ? 'bg-italian-coral-500' : 'bg-italian-sunset-500'
                   }`} />
                   <span className="text-sm font-medium">
                     {connectionStatus === 'connected' ? 'Connected' : 
@@ -140,7 +140,7 @@ export default function Home() {
                 </div>
                 
                 {data.length > 0 && (
-                  <div className="flex items-center space-x-2 text-apple-blue">
+                  <div className="flex items-center space-x-2 text-italian-sky-500">
                     <TrendingUp className="w-4 h-4" />
                     <span className="text-sm font-medium">
                       {data.length} {currentTranslations.opportunities}
@@ -158,7 +158,7 @@ export default function Home() {
           </div>
 
           {/* Filters */}
-          <div className="apple-card p-6 mb-6">
+          <div className="italian-card p-6 mb-6 transition-italian">
             <FilterPanel 
               filters={filters}
               onFiltersChange={handleFilterChange}
@@ -168,16 +168,16 @@ export default function Home() {
 
           {/* Error State */}
           {error && (
-            <div className="apple-card p-6 mb-6 border-l-4 border-apple-red">
+            <div className="italian-card p-6 mb-6 border-l-4 border-italian-coral-500 transition-italian">
               <div className="flex items-start space-x-3">
-                <div className="w-5 h-5 rounded-full bg-apple-red flex items-center justify-center flex-shrink-0 mt-0.5">
+                <div className="w-5 h-5 rounded-full bg-italian-coral-500 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-white text-xs">!</span>
                 </div>
                 <div className="space-y-2">
-                  <p className="text-apple-red font-medium">{error}</p>
+                  <p className="text-italian-coral-500 font-medium">{error}</p>
                   <button 
                     onClick={fetchData}
-                    className="apple-button-secondary px-4 py-2 text-sm"
+                    className="italian-button-secondary px-4 py-2 text-sm transition-italian"
                   >
                     Retry
                   </button>
@@ -187,7 +187,7 @@ export default function Home() {
           )}
 
           {/* Data Table */}
-          <div className="apple-card overflow-hidden">
+          <div className="italian-card overflow-hidden transition-italian">
             <PriceTable 
               data={data} 
               filters={filters}
