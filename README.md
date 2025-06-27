@@ -18,11 +18,11 @@ Real-time cryptocurrency arbitrage monitoring across major exchanges.
 ### Installation
 ```bash
 # Clone repository
-git clone <repository-url>
+git clone https://github.com/createMonster/arbradar.git
 cd arbradar
 
 # Backend
-cd backend && npm install && npm run dev
+cd backend && pnpm install && pnpm dev
 
 # Frontend (new terminal)
 cd frontend && pnpm install && pnpm dev
@@ -38,7 +38,7 @@ cd frontend && pnpm install && pnpm dev
 
 1. **Clone and setup environment**:
 ```bash
-git clone <repository-url>
+git clone https://github.com/createMonster/arbradar.git
 cd arbradar
 
 # Create backend environment file
