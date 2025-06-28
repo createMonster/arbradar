@@ -1,4 +1,5 @@
 import winston from 'winston';
+import { isDevelopment } from '../config/environment';
 
 export interface LogContext {
   service?: string;
@@ -14,8 +15,6 @@ class LoggerService {
   private static instance: LoggerService;
 
   constructor() {
-    const isDevelopment = process.env.NODE_ENV !== 'production';
-    
     // Custom format for better readability
     const customFormat = winston.format.combine(
       winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
@@ -35,13 +34,13 @@ class LoggerService {
       winston.format.timestamp({ format: 'HH:mm:ss' }),
       winston.format.printf(({ timestamp, level, message, service, ...meta }) => {
         const serviceTag = service ? `[${service}]` : '';
-        const metaStr = Object.keys(meta).length && isDevelopment ? ` ${JSON.stringify(meta, null, 2)}` : '';
+        const metaStr = Object.keys(meta).length && isDevelopment() ? ` ${JSON.stringify(meta, null, 2)}` : '';
         return `${timestamp} ${level} ${serviceTag} ${message}${metaStr}`;
       })
     );
 
     this.logger = winston.createLogger({
-      level: isDevelopment ? 'debug' : 'info',
+      level: isDevelopment() ? 'debug' : 'info',
       defaultMeta: {
         service: 'arb-radar-backend'
       },
@@ -49,7 +48,7 @@ class LoggerService {
         // Console transport for development
         new winston.transports.Console({
           format: consoleFormat,
-          level: isDevelopment ? 'debug' : 'warn'
+          level: isDevelopment() ? 'debug' : 'warn'
         }),
         
         // File transports for production

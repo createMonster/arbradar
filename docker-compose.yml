@@ -10,6 +10,17 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3001
+      - LOG_LEVEL=info
+      - CACHE_TTL_TICKERS=10000
+      - CACHE_TTL_FUNDING_RATES=600000
+      - CACHE_TTL_PROCESSED_DATA=10000
+      - API_RATE_LIMIT_WINDOW=60000
+      - API_RATE_LIMIT_MAX=100
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://frontend:3000
+      - HEALTH_CHECK_TIMEOUT=5000
+      - HEALTH_CHECK_INTERVAL=30000
+      - DEV_ENABLE_DEBUG_LOGS=false
+      - DEV_ENABLE_CACHE_LOGS=false
     env_file:
       - ./backend/.env
     volumes:

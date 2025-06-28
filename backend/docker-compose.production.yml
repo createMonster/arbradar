@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  backend:
+    image: ghcr.io/${GITHUB_REPOSITORY}/backend:latest
+    container_name: arbradar-backend-prod
+    restart: unless-stopped
+    
+    # Environment variables for production
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - LOG_LEVEL=info
+      - CACHE_TTL_TICKERS=10000
+      - CACHE_TTL_FUNDING_RATES=600000
+      - CACHE_TTL_PROCESSED_DATA=10000
+      - API_RATE_LIMIT_WINDOW=60000
+      - API_RATE_LIMIT_MAX=100
+      - CORS_ORIGINS=https://yourproductiondomain.com,https://www.yourproductiondomain.com
+      - HEALTH_CHECK_TIMEOUT=5000
+      - HEALTH_CHECK_INTERVAL=30000
+      - DEV_ENABLE_DEBUG_LOGS=false
+      - DEV_ENABLE_CACHE_LOGS=false
+      # Add your Hyperliquid credentials via environment or secrets
+      # - HYPERLIQUID_WALLET_ADDRESS=${HYPERLIQUID_WALLET_ADDRESS}
+      # - HYPERLIQUID_PRIVATE_KEY=${HYPERLIQUID_PRIVATE_KEY}
+    
+    # Port mapping
+    ports:
+      - "3001:3001"
+    
+    # Resource limits for production
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Volume for logs (optional, for persistent logging)
+    volumes:
+      - ./logs:/app/logs
+      - /etc/localtime:/etc/localtime:ro
+    
+    # Network configuration
+    networks:
+      - arbradar-network
+
+# Nginx reverse proxy for production (optional)
+  nginx:
+    image: nginx:alpine
+    container_name: arbradar-nginx-prod
+    restart: unless-stopped
+    
+    ports:
+      - "80:80"
+      - "443:443"
+    
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./logs/nginx:/var/log/nginx
+    
+    depends_on:
+      backend:
+        condition: service_healthy
+    
+    networks:
+      - arbradar-network
+
+# Redis for caching (future enhancement)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: arbradar-redis-prod
+  #   restart: unless-stopped
+  #   
+  #   ports:
+  #     - "6379:6379"
+  #   
+  #   volumes:
+  #     - redis_data:/data
+  #   
+  #   command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+  #   
+  #   networks:
+  #     - arbradar-network
+
+networks:
+  arbradar-network:
+    driver: bridge
+
+volumes:
+  redis_data:
+    driver: local 

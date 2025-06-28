@@ -63,12 +63,14 @@ export const EXCHANGE_MARKET_SUPPORT: { [key: string]: ExchangeCapabilities } = 
   },
 };
 
-// Centralized cache configuration
+import { env } from './environment';
+
+// Centralized cache configuration - now using environment variables
 export const CACHE_CONFIG = {
-  TICKERS_TTL: 10000, // 10 seconds for price data (frequent updates needed)
-  FUNDING_RATES_TTL: 600000, // 10 minutes for funding rates (stable data)
-  PROCESSED_DATA_TTL: 10000, // 10 seconds to match price data freshness (arbitrage needs real-time data)
-  HEALTH_CHECK_TTL: 60000, // 1 minute for health checks
+  TICKERS_TTL: env.CACHE_TTL_TICKERS, // 10 seconds for price data (frequent updates needed)
+  FUNDING_RATES_TTL: env.CACHE_TTL_FUNDING_RATES, // 10 minutes for funding rates (stable data)
+  PROCESSED_DATA_TTL: env.CACHE_TTL_PROCESSED_DATA, // 10 seconds to match price data freshness (arbitrage needs real-time data)
+  HEALTH_CHECK_TTL: env.HEALTH_CHECK_INTERVAL, // 1 minute for health checks
 };
 
 // Exchange-specific configurations
@@ -181,8 +183,8 @@ export function getExchangeConfig(exchangeName: string): ExchangeConfig {
   if (exchangeName === 'hyperliquid') {
     return {
       ...baseConfig,
-      walletAddress: process.env.HYPERLIQUID_WALLET_ADDRESS,
-      privateKey: process.env.HYPERLIQUID_PRIVATE_KEY,
+      walletAddress: env.HYPERLIQUID_WALLET_ADDRESS,
+      privateKey: env.HYPERLIQUID_PRIVATE_KEY,
     };
   }
 

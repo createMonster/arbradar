@@ -1,6 +1,7 @@
 import express from 'express';
 import { extractErrorInfo, isCustomError, isOperationalError } from '../errors/CustomErrors';
 import logger from '../services/LoggerService';
+import { isDevelopment, isProduction } from '../config/environment';
 
 export interface ErrorResponse {
   success: false;
@@ -28,7 +29,6 @@ export function errorHandler(
 ): void {
   // Extract error information
   const errorInfo = extractErrorInfo(error);
-  const isDevelopment = process.env.NODE_ENV !== 'production';
   
   // Generate request ID for tracking
   const requestId = req.headers['x-request-id'] as string || 
@@ -66,14 +66,14 @@ export function errorHandler(
   };
 
   // Add details in development or for operational errors
-  if (isDevelopment || isOperationalError(error)) {
+  if (isDevelopment() || isOperationalError(error)) {
     if (errorInfo.context.details) {
       errorResponse.error.details = errorInfo.context.details;
     }
   }
 
   // Add stack trace only in development for debugging
-  if (isDevelopment && errorInfo.stack) {
+  if (isDevelopment() && errorInfo.stack) {
     errorResponse.stack = errorInfo.stack;
   }
 
@@ -217,7 +217,7 @@ export function handleCriticalError(error: any): void {
   });
 
   // For non-operational errors in production, we might want to restart the process
-  if (!isOperationalError(error) && process.env.NODE_ENV === 'production') {
+  if (!isOperationalError(error) && isProduction()) {
     logger.error('Non-operational error in production, considering graceful shutdown', error);
     
     // Give time for the error to be logged before exiting

@@ -4,106 +4,113 @@ Real-time cryptocurrency arbitrage monitoring across major exchanges.
 
 ## Features
 
-- **Real-time price monitoring** from Binance, OKX, Bitget, Bybit
+- **Real-time price monitoring** from Binance, OKX, Bitget, Bybit, Hyperliquid
 - **Arbitrage opportunity detection** with spread calculations
-- **Professional interface** with filtering and search
-- **Multi-language support** (English, Chinese)
+- **Professional web interface** with filtering and search
+- **RESTful API** for data access
+- **Production-ready** with Docker deployment
 
 ## Quick Start
 
 ### Prerequisites
-- Node.js 18+
-- pnpm or npm
+- Node.js 18+ 
+- Docker & Docker Compose (for deployment)
 
-### Installation
+### Development Setup
 ```bash
 # Clone repository
-git clone https://github.com/createMonster/arbradar.git
+git clone <your-repo-url>
 cd arbradar
 
-# Backend
-cd backend && pnpm install && pnpm dev
+# Install dependencies
+pnpm install
 
-# Frontend (new terminal)
-cd frontend && pnpm install && pnpm dev
+# Backend development
+cd backend && pnpm dev
+
+# Frontend development (new terminal)
+cd frontend && pnpm dev
 ```
 
-### Access
-- **Web App**: http://localhost:3000
-- **API**: http://localhost:3001
+**Access**: Frontend at http://localhost:3000, API at http://localhost:3001
 
-## Deployment
+## Production Deployment
 
-### Docker Deployment (Recommended)
+### Easy Deployment with Script
 
-1. **Clone and setup environment**:
+1. **Setup environment**:
 ```bash
-git clone https://github.com/createMonster/arbradar.git
-cd arbradar
-
-# Create backend environment file
+# Copy and configure environment variables
 cp backend/.env.example backend/.env
-# Edit backend/.env with your exchange API keys
+# Edit backend/.env with your exchange API keys (optional)
 ```
 
-2. **Deploy with Docker Compose**:
+2. **Deploy**:
 ```bash
-# Build and start containers
-docker-compose up --build -d
+# Quick deployment
+./deploy.sh
 
-# Check container status
-docker-compose ps
+# Clean deployment (removes old images)
+./deploy.sh --clean
+
+# View logs
+./deploy.sh --logs
+
+# Stop services
+./deploy.sh --stop
+```
+
+3. **Access**:
+- **Web App**: http://localhost:3000
+- **API**: http://localhost:3001/api/health
+
+### Manual Docker Deployment
+```bash
+# Build and start
+docker-compose up --build -d
 
 # View logs
 docker-compose logs -f
-```
 
-3. **Access deployed application**:
-- **Web App**: http://localhost:3000
-- **API**: http://localhost:3001
-- **Health Check**: http://localhost:3001/api/health
-
-4. **Stop deployment**:
-```bash
+# Stop
 docker-compose down
 ```
 
-### Production Deployment
-
-For production environments:
-
-1. **Environment Variables**:
-   - Set `NODE_ENV=production`
-   - Configure exchange API keys in `backend/.env`
-   - Set proper CORS origins if needed
-
-2. **Container Management**:
-   - Containers auto-restart on failure
-   - Health checks monitor service status
-   - Logs stored in Docker volumes
-
-3. **Scaling**:
-   - Backend and frontend run in separate containers
-   - Can be scaled independently
-   - Internal Docker network for secure communication
-
 ## API Reference
 
-### Get Arbitrage Opportunities
 ```bash
-GET /api/spreads?minSpread=0.5&exchanges=Binance,OKX
-```
+# Get arbitrage opportunities
+GET /api/spreads?minSpread=0.5&symbol=BTC/USDT
 
-### Check Status
-```bash
+# Get all tickers
+GET /api/tickers?exchange=Binance
+
+# Get funding rates
+GET /api/funding-rates
+
+# Health check
 GET /api/health
+
+# Refresh data
+POST /api/refresh
 ```
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14, TypeScript, Tailwind CSS
-- **Backend**: Express.js, CCXT, TypeScript
-- **Real-time**: 5-second updates
+- **Frontend**: Next.js 14, TypeScript, Tailwind CSS, shadcn/ui
+- **Backend**: Express.js, TypeScript, CCXT, Winston logging
+- **Deployment**: Docker, Docker Compose, multi-stage builds
+- **Architecture**: Microservices with health checks and auto-restart
+
+## Project Structure
+
+```
+arbradar/
+├── frontend/          # Next.js web application
+├── backend/           # Express.js API server
+├── docker-compose.yml # Full-stack deployment
+└── deploy.sh         # Deployment automation script
+```
 
 ## License
 

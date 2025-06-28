@@ -1,21 +1,18 @@
 import express, { Application } from 'express';
 import cors from 'cors';
 import apiRoutes from './routes/api-refactored';
+import { env, validateEnvironmentConfig } from './config/environment';
+
+// Validate environment configuration on startup
+validateEnvironmentConfig();
 
 const app: Application = express();
-const PORT = process.env.PORT || 3001;
+const PORT = env.PORT;
 
 // Middleware
 app.use(
   cors({
-    origin: [
-      'http://localhost:3000',
-      'http://127.0.0.1:3000',
-      'http://localhost:4000',
-      'http://localhost:3002',
-      // Docker internal network - frontend container
-      'http://frontend:3000',
-    ],
+    origin: env.CORS_ORIGINS,
     credentials: true,
   }),
 );

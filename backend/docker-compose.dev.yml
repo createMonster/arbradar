@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    container_name: arbradar-backend-dev
+    restart: unless-stopped
+    
+    # Environment variables for development
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - LOG_LEVEL=debug
+      - CACHE_TTL_TICKERS=10000
+      - CACHE_TTL_FUNDING_RATES=600000
+      - CACHE_TTL_PROCESSED_DATA=10000
+      - API_RATE_LIMIT_WINDOW=60000
+      - API_RATE_LIMIT_MAX=1000
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:4000
+      - HEALTH_CHECK_TIMEOUT=5000
+      - HEALTH_CHECK_INTERVAL=30000
+      - DEV_ENABLE_DEBUG_LOGS=true
+      - DEV_ENABLE_CACHE_LOGS=true
+    
+    # Port mapping
+    ports:
+      - "3001:3001"
+    
+    # Volume for logs
+    volumes:
+      - ./logs:/app/logs
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s 

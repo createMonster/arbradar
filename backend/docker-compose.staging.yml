@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  backend:
+    image: ghcr.io/${GITHUB_REPOSITORY}/backend:main
+    container_name: arbradar-backend-staging
+    restart: unless-stopped
+    
+    # Environment variables for staging
+    environment:
+      - NODE_ENV=staging
+      - PORT=3001
+      - LOG_LEVEL=debug
+      - CACHE_TTL_TICKERS=10000
+      - CACHE_TTL_FUNDING_RATES=600000
+      - CACHE_TTL_PROCESSED_DATA=10000
+      - API_RATE_LIMIT_WINDOW=60000
+      - API_RATE_LIMIT_MAX=200
+      - CORS_ORIGINS=https://staging.yourproductiondomain.com,https://localhost:3000
+      - HEALTH_CHECK_TIMEOUT=5000
+      - HEALTH_CHECK_INTERVAL=30000
+      - DEV_ENABLE_DEBUG_LOGS=true
+      - DEV_ENABLE_CACHE_LOGS=true
+      # Add your Hyperliquid credentials via environment or secrets
+      # - HYPERLIQUID_WALLET_ADDRESS=${HYPERLIQUID_WALLET_ADDRESS}
+      # - HYPERLIQUID_PRIVATE_KEY=${HYPERLIQUID_PRIVATE_KEY}
+    
+    # Port mapping
+    ports:
+      - "3001:3001"
+    
+    # Resource limits for staging (less restrictive than production)
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+    
+    # Volume for logs
+    volumes:
+      - ./logs:/app/logs
+      - /etc/localtime:/etc/localtime:ro
+    
+    # Network configuration
+    networks:
+      - arbradar-staging-network
+
+networks:
+  arbradar-staging-network:
+    driver: bridge 
