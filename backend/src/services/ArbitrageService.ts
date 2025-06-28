@@ -196,7 +196,7 @@ export class ArbitrageService {
 
       if (exchangeNames.length >= 2) {
         const prices: { price: number; exchange: string; volume: number; fundingRate: number; fundingTime: number | null }[] = [];
-        const exchangeInfo: { [key: string]: ExchangeData } = {};
+        const exchangeInfo: { [exchangeName: string]: ExchangeData } = {};
 
         exchangeNames.forEach((exchangeName) => {
           const data = exchangeData[exchangeName];
@@ -383,4 +383,6 @@ export class ArbitrageService {
       lowConfidenceCount: confidenceCounts.low,
     };
   }
+
+
 }

@@ -1,15 +1,15 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import PriceTable from '@/components/PriceTable';
+import RoutesTable from '@/components/RoutesTable';
 import FilterPanel from '@/components/FilterPanel';
 import Layout from '@/components/Layout';
 import { apiService } from '@/lib/apiService';
-import { PriceRow, FilterOptions } from '@/types';
+import { FilterOptions, EnhancedSpreadData } from '@/types';
 import { TrendingUp, Activity } from 'lucide-react';
 
 export default function Home() {
-  const [data, setData] = useState<PriceRow[]>([]);
+  const [data, setData] = useState<EnhancedSpreadData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [language, setLanguage] = useState<'en' | 'zh'>('en');
@@ -28,18 +28,18 @@ export default function Home() {
       setError(null);
       setConnectionStatus('checking');
       
-      console.log('🔄 Fetching data with filters:', filters);
+      console.log('🔄 Fetching routes data with filters:', filters);
       
-      const result = await apiService.getSpreads(filters);
+      const result = await apiService.getRoutes(filters);
       
-      console.log('✅ Data received:', result);
+      console.log('✅ Routes data received:', result);
       setData(result.data);
       setLastUpdate(new Date());
       setConnectionStatus('connected');
       
     } catch (err) {
-      console.error('❌ Error fetching data:', err);
-      setError(`Failed to fetch data: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      console.error('❌ Error fetching routes data:', err);
+      setError(`Failed to fetch routes data: ${err instanceof Error ? err.message : 'Unknown error'}`);
       setConnectionStatus('disconnected');
     } finally {
       setLoading(false);
@@ -186,14 +186,12 @@ export default function Home() {
             </div>
           )}
 
-          {/* Data Table */}
+          {/* Routes Table */}
           <div className="italian-card overflow-hidden transition-italian">
-            <PriceTable 
+            <RoutesTable 
               data={data} 
-              filters={filters}
               language={language}
               isLoading={loading}
-              connectionStatus={connectionStatus}
             />
           </div>
 

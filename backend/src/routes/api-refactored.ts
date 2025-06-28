@@ -462,7 +462,82 @@ router.delete('/cache', (req: express.Request, res: express.Response) => {
   }
 });
 
+// GET /api/routes - Top 5 routes for all symbols (Phase 1)
+router.get('/routes', validateQueryParams, async (req: express.Request, res: express.Response) => {
+  try {
+    console.log('🔄 API call to /routes');
 
+    // Parse query parameters
+    const filters: any = {};
+
+    if (req.query.minSpread) {
+      filters.minSpread = parseFloat(req.query.minSpread as string);
+    }
+
+    if (req.query.minVolume) {
+      filters.minVolume = parseFloat(req.query.minVolume as string);
+    }
+
+    if (req.query.exchanges) {
+      filters.exchanges = (req.query.exchanges as string).split(',');
+    }
+
+    if (req.query.search) {
+      filters.search = req.query.search as string;
+    }
+
+    if (req.query.limit) {
+      filters.limit = parseInt(req.query.limit as string);
+    }
+
+    const forceRefresh = req.query.refresh === 'true';
+
+    // Use the new routes service
+    const result = await dataService.getRoutes(filters, forceRefresh);
+
+    console.log(`✅ Returning ${result.count} symbols with routes`);
+
+    res.json(result);
+  } catch (error) {
+    handleServiceError(error, res);
+  }
+});
+
+// GET /api/routes/symbol/:symbol - Routes for specific symbol
+router.get('/routes/symbol/:symbol', async (req: express.Request, res: express.Response) => {
+  try {
+    const symbol = req.params.symbol;
+    console.log(`🔄 API call to /routes/symbol/${symbol}`);
+
+    const forceRefresh = req.query.refresh === 'true';
+    
+    // Get all routes and filter for specific symbol
+    const result = await dataService.getRoutes({}, forceRefresh);
+    
+    if (result.success) {
+      const symbolRoutes = result.data.find(r => r.symbol === symbol);
+      
+      if (symbolRoutes) {
+        res.json({
+          success: true,
+          data: symbolRoutes,
+          timestamp: Date.now(),
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          error: 'Symbol not found',
+          message: `No routes found for symbol: ${symbol}`,
+          timestamp: Date.now(),
+        });
+      }
+    } else {
+      res.status(500).json(result);
+    }
+  } catch (error) {
+    handleServiceError(error, res);
+  }
+});
 
 // Graceful shutdown handling
 process.on('SIGTERM', () => {

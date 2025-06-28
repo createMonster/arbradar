@@ -88,4 +88,59 @@ export interface EnhancedPriceRow extends Omit<PriceRow, 'marketType'> {
       fundingRate?: EnhancedFundingRate;
     };
   };
+}
+
+// Phase 1: Top 5 Routes Implementation
+export interface ArbitrageRoute {
+  routeId: string;
+  type: 'direct';
+  buyExchange: string;
+  sellExchange: string;
+  buyPrice: number;
+  sellPrice: number;
+  spread: {
+    absolute: number;
+    percentage: number;
+  };
+  profitability: {
+    grossProfit: number;
+    estimatedFees: number;
+    netProfit: number;
+    netProfitPercentage: number;
+  };
+  executionConstraints: {
+    maxVolume: number;
+    liquidityScore: number;
+    executionRisk: 'low' | 'medium' | 'high';
+  };
+  fundingImpact?: {
+    buyExchangeRate: number;
+    sellExchangeRate: number;
+    netFundingImpact: number;
+  };
+}
+
+export interface EnhancedSpreadData {
+  symbol: string;
+  marketType: 'spot' | 'perp';
+  exchanges: { [exchangeName: string]: ExchangeData };
+  routes: ArbitrageRoute[];
+  bestRoute: ArbitrageRoute;
+  routeCount: number;
+  totalAvailableRoutes: number;
+  lastUpdated: number;
+}
+
+export interface RoutesResponse {
+  success: boolean;
+  data: EnhancedSpreadData[];
+  total: number;
+  count: number;
+  cached: boolean;
+  routeStats?: {
+    totalSymbols: number;
+    averageRoutesPerSymbol: number;
+    averageNetProfit: number;
+  };
+  timestamp: number;
 } 

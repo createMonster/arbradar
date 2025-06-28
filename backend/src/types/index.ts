@@ -157,3 +157,53 @@ export interface FilterOptions {
   limit?: number;
   refresh?: 'true' | 'false';
 }
+
+// Phase 1: Top 5 Routes Implementation
+export interface ArbitrageRoute {
+  routeId: string;                    // Unique identifier
+  type: 'direct';                     // Phase 1: direct routes only
+  buyExchange: string;
+  sellExchange: string;
+  buyPrice: number;
+  sellPrice: number;
+  spread: {
+    absolute: number;
+    percentage: number;
+  };
+  profitability: {
+    grossProfit: number;              // Before fees
+    estimatedFees: number;            // Trading fees both sides
+    netProfit: number;                // After fees
+    netProfitPercentage: number;
+  };
+  executionConstraints: {
+    maxVolume: number;                // Based on available volume
+    liquidityScore: number;           // 0-1 based on volume
+    executionRisk: 'low' | 'medium' | 'high';
+  };
+  fundingImpact?: {                   // For perpetual contracts
+    buyExchangeRate: number;
+    sellExchangeRate: number;
+    netFundingImpact: number;
+  };
+}
+
+export interface EnhancedSpreadData {
+  symbol: string;
+  marketType: 'spot' | 'perp';
+  exchanges: { [exchangeName: string]: ExchangeData };
+  routes: ArbitrageRoute[];           // TOP 5 profitable routes (max)
+  bestRoute: ArbitrageRoute;          // Best route for quick access
+  routeCount: number;                 // Actual number of routes (≤ 5)
+  totalAvailableRoutes: number;       // Total profitable routes found
+  lastUpdated: number;
+}
+
+// API response for routes endpoint
+export interface RoutesResponse extends ApiResponse<EnhancedSpreadData[]> {
+  routeStats?: {
+    totalSymbols: number;
+    averageRoutesPerSymbol: number;
+    averageNetProfit: number;
+  };
+}

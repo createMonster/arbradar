@@ -327,6 +327,259 @@ export class DataService {
     };
   }
 
+  /**
+   * Phase 1: Get top 5 routes for each symbol
+   */
+  public async getRoutes(
+    filters?: any,
+    forceRefresh = false,
+  ): Promise<{
+    success: boolean;
+    data: any[];
+    total: number;
+    count: number;
+    cached: boolean;
+    routeStats?: {
+      totalSymbols: number;
+      averageRoutesPerSymbol: number;
+      averageNetProfit: number;
+    };
+    timestamp: number;
+  }> {
+    const cacheKey = 'routes_data';
+
+    if (!forceRefresh) {
+      const cached = this.cacheService.get<any[]>(cacheKey);
+      if (cached) {
+        console.log('📦 Returning cached routes data');
+        return this.formatRoutesResponse(cached, true);
+      }
+    }
+
+    try {
+      // Get fresh ticker and funding rate data  
+      const { tickers, fundingRates } = await this.exchangeService.fetchAllExchangeData();
+
+      // Calculate routes using simplified logic
+      const routes = this.calculateTop5RoutesSimple(tickers, fundingRates);
+
+      // Cache the results
+      this.cacheService.set(cacheKey, routes);
+
+      return this.formatRoutesResponse(routes, false);
+    } catch (error) {
+      console.error('❌ Failed to calculate routes:', error);
+      return {
+        success: false,
+        data: [],
+        total: 0,
+        count: 0,
+        cached: false,
+        timestamp: Date.now(),
+      };
+    }
+  }
+
+  private formatRoutesResponse(routes: any[], cached: boolean) {
+    const totalRoutes = routes.reduce((sum, r) => sum + (r.routeCount || 0), 0);
+    const averageRoutesPerSymbol = routes.length > 0 ? totalRoutes / routes.length : 0;
+    const averageNetProfit = routes.length > 0 
+      ? routes.reduce((sum, r) => sum + (r.bestRoute?.profitability?.netProfitPercentage || 0), 0) / routes.length
+      : 0;
+
+    return {
+      success: true,
+      data: routes,
+      total: routes.length,
+      count: routes.length,
+      cached,
+      routeStats: {
+        totalSymbols: routes.length,
+        averageRoutesPerSymbol: Number(averageRoutesPerSymbol.toFixed(1)),
+        averageNetProfit: Number(averageNetProfit.toFixed(4)),
+      },
+      timestamp: Date.now(),
+    };
+  }
+
+  private calculateTop5RoutesSimple(
+    allTickers: Record<string, Record<string, unknown>>,
+    allFundingRates: Record<string, Record<string, unknown>>,
+  ): any[] {
+    console.log('🔄 Calculating top 5 routes for each symbol...');
+
+    const routes: any[] = [];
+    const symbolMap: Record<string, Record<string, any>> = {};
+    let totalSymbols = 0;
+
+    // Group tickers by symbol across exchanges
+    Object.entries(allTickers).forEach(([exchangeName, tickers]) => {
+      Object.entries(tickers).forEach(([symbol, ticker]) => {
+        if (!symbolMap[symbol]) {
+          symbolMap[symbol] = {};
+          totalSymbols++;
+        }
+        symbolMap[symbol][exchangeName] = {
+          ticker: ticker,
+          fundingRate: allFundingRates[exchangeName]?.[symbol],
+        };
+      });
+    });
+
+    console.log(`📊 Processing ${totalSymbols} unique symbols for route calculation...`);
+
+    // Calculate routes for each symbol
+    Object.entries(symbolMap).forEach(([symbol, exchangeData]) => {
+      const exchangeNames = Object.keys(exchangeData);
+
+      if (exchangeNames.length >= 2) {
+        const prices: any[] = [];
+        const exchangeInfo: any = {};
+
+        // Build price array and exchange info
+        exchangeNames.forEach((exchangeName) => {
+          const data = exchangeData[exchangeName];
+          const ticker = data.ticker as any;
+          const fundingRate = data.fundingRate as any;
+          
+          if (ticker && ticker.last && ticker.last > 0) {
+            prices.push({
+              price: ticker.last,
+              exchange: exchangeName,
+              volume: ticker.quoteVolume || 0,
+              fundingRate: fundingRate?.fundingRate || 0,
+            });
+
+            exchangeInfo[exchangeName] = {
+              price: ticker.last,
+              volume: ticker.quoteVolume || 0,
+              lastUpdated: Date.now(),
+              fundingRate: fundingRate?.fundingRate ? {
+                rate: fundingRate.fundingRate,
+                nextTime: fundingRate.fundingTimestamp ? fundingRate.fundingTimestamp + 8 * 60 * 60 * 1000 : Date.now() + 8 * 60 * 60 * 1000,
+                dataAge: 0,
+              } : undefined,
+            };
+          }
+        });
+
+        if (prices.length >= 2) {
+          // Basic data quality check
+          const volumes = prices.map((p) => p.volume).filter((v) => v > 0);
+          const totalVolume = volumes.reduce((sum, vol) => sum + vol, 0);
+          
+          if (totalVolume < 50000) return; // Skip low volume pairs
+
+          // Calculate all possible profitable routes
+          const allRoutes: any[] = [];
+          
+          for (let i = 0; i < prices.length; i++) {
+            for (let j = 0; j < prices.length; j++) {
+              if (i !== j) {
+                const buyExchange = prices[i].exchange;
+                const sellExchange = prices[j].exchange;
+                const buyPrice = prices[i].price;
+                const sellPrice = prices[j].price;
+
+                if (sellPrice > buyPrice) {
+                  const absoluteSpread = sellPrice - buyPrice;
+                  const percentageSpread = (absoluteSpread / buyPrice) * 100;
+
+                  // Basic fee estimation (0.1% per side = 0.2% total)
+                  const estimatedFees = buyPrice * 0.002;
+                  const grossProfit = absoluteSpread;
+                  const netProfit = grossProfit - estimatedFees;
+                  const netProfitPercentage = (netProfit / buyPrice) * 100;
+
+                  // Only include profitable routes
+                  if (netProfit > 0 && percentageSpread > 0.01) {
+                    const buyVolume = prices[i].volume;
+                    const sellVolume = prices[j].volume;
+                    const minVolume = Math.min(buyVolume, sellVolume);
+                    
+                    let executionRisk: 'low' | 'medium' | 'high' = 'medium';
+                    if (minVolume > 100000) executionRisk = 'low';
+                    else if (minVolume < 50000) executionRisk = 'high';
+
+                    const route = {
+                      routeId: `${symbol}-${buyExchange}-${sellExchange}-${Date.now()}`,
+                      type: 'direct',
+                      buyExchange,
+                      sellExchange,
+                      buyPrice,
+                      sellPrice,
+                      spread: {
+                        absolute: absoluteSpread,
+                        percentage: percentageSpread,
+                      },
+                      profitability: {
+                        grossProfit,
+                        estimatedFees,
+                        netProfit,
+                        netProfitPercentage,
+                      },
+                      executionConstraints: {
+                        maxVolume: minVolume,
+                        liquidityScore: Math.min(minVolume / 100000, 1),
+                        executionRisk,
+                      },
+                    };
+
+                    // Add funding impact for perpetual contracts
+                    const isPerp = symbol.includes(':') || symbol.includes('PERP') || symbol.includes('PERPETUAL');
+                    if (isPerp) {
+                      const buyFundingRate = prices[i].fundingRate;
+                      const sellFundingRate = prices[j].fundingRate;
+                      (route as any).fundingImpact = {
+                        buyExchangeRate: buyFundingRate,
+                        sellExchangeRate: sellFundingRate,
+                        netFundingImpact: Math.abs(sellFundingRate - buyFundingRate) * 100,
+                      };
+                    }
+
+                    allRoutes.push(route);
+                  }
+                }
+              }
+            }
+          }
+
+          // Sort routes by net profitability and take top 5
+          allRoutes.sort((a, b) => b.profitability.netProfitPercentage - a.profitability.netProfitPercentage);
+          const top5Routes = allRoutes.slice(0, 5);
+
+          if (top5Routes.length > 0) {
+            const marketType = symbol.includes(':') || symbol.includes('PERP') || symbol.includes('PERPETUAL') ? 'perp' : 'spot';
+            
+            routes.push({
+              symbol,
+              marketType,
+              exchanges: exchangeInfo,
+              routes: top5Routes,
+              bestRoute: top5Routes[0],
+              routeCount: top5Routes.length,
+              totalAvailableRoutes: allRoutes.length,
+              lastUpdated: Date.now(),
+            });
+          }
+        }
+      }
+    });
+
+    // Sort by best route profitability
+    routes.sort((a, b) => b.bestRoute.profitability.netProfitPercentage - a.bestRoute.profitability.netProfitPercentage);
+
+    console.log(`🎯 Route Calculation Summary:`);
+    console.log(`   • Symbols with profitable routes: ${routes.length}`);
+    if (routes.length > 0) {
+      const avgRoutes = routes.reduce((sum, r) => sum + r.routeCount, 0) / routes.length;
+      console.log(`   • Average routes per symbol: ${avgRoutes.toFixed(1)}`);
+      console.log(`🏆 Best opportunity: ${routes[0].symbol} - ${routes[0].bestRoute.profitability.netProfitPercentage.toFixed(4)}% net profit`);
+    }
+
+    return routes;
+  }
+
   // Cleanup method to stop timers
   public cleanup(): void {
     if (this.updateTimer) {
