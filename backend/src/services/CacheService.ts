@@ -22,10 +22,11 @@ export class CacheService {
   constructor(private defaultTtl: number = 30000) {} // 30 seconds default
 
   public set<T>(key: string, data: T, ttl?: number): void {
+    const effectiveTtl = ttl !== undefined ? ttl : this.defaultTtl;
     const entry: CacheEntry<T> = {
       data,
       timestamp: Date.now(),
-      ttl: ttl || this.defaultTtl,
+      ttl: effectiveTtl,
     };
 
     this.cache.set(key, entry);
@@ -42,7 +43,8 @@ export class CacheService {
     }
 
     const now = Date.now();
-    const isExpired = now - entry.timestamp > entry.ttl;
+    // Handle zero TTL as immediate expiration
+    const isExpired = entry.ttl === 0 || (now - entry.timestamp > entry.ttl);
 
     if (isExpired) {
       this.cache.delete(key);
@@ -61,7 +63,8 @@ export class CacheService {
     if (!entry) return false;
 
     const now = Date.now();
-    const isExpired = now - entry.timestamp > entry.ttl;
+    // Handle zero TTL as immediate expiration
+    const isExpired = entry.ttl === 0 || (now - entry.timestamp > entry.ttl);
 
     if (isExpired) {
       this.cache.delete(key);
@@ -81,6 +84,7 @@ export class CacheService {
 
   public clear(): void {
     this.cache.clear();
+    // Reset statistics
     this.stats.hits = 0;
     this.stats.misses = 0;
     console.log('🧹 Cleared all cache entries');
@@ -110,7 +114,8 @@ export class CacheService {
     let deletedCount = 0;
 
     for (const [key, entry] of this.cache.entries()) {
-      const isExpired = now - entry.timestamp > entry.ttl;
+      // Handle zero TTL as immediate expiration
+      const isExpired = entry.ttl === 0 || (now - entry.timestamp > entry.ttl);
       if (isExpired) {
         this.cache.delete(key);
         deletedCount++;
@@ -132,7 +137,8 @@ export class CacheService {
 
     const now = Date.now();
     const age = now - entry.timestamp;
-    const isExpired = age > entry.ttl;
+    // Handle zero TTL as immediate expiration
+    const isExpired = entry.ttl === 0 || age > entry.ttl;
 
     return {
       exists: true,
