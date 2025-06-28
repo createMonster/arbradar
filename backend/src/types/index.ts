@@ -25,12 +25,12 @@ export interface FundingRate {
 
 export interface PriceRow {
   symbol: string;
-  marketType?: 'spot' | 'perp';  // Enhanced with market type
+  marketType?: 'spot' | 'perp'; // Enhanced with market type
   exchanges: {
     [key: string]: ExchangeData;
   };
   spread: SpreadData;
-  fundingRate?: FundingRate;  // Keep for backward compatibility
+  fundingRate?: FundingRate; // Keep for backward compatibility
   // Enhanced funding rates structure
   fundingRates?: {
     [exchangeName: string]: {
@@ -67,19 +67,93 @@ export function getMarketType(symbol: string): MarketType {
 
 // Updated supported exchanges based on exchanges.md
 export const SUPPORTED_EXCHANGES = ['binance', 'okx', 'bitget', 'bybit', 'gate', 'hyperliquid'] as const;
-export type SupportedExchange = typeof SUPPORTED_EXCHANGES[number];
+export type SupportedExchange = (typeof SUPPORTED_EXCHANGES)[number];
 
 // Exchanges that support both spot and perp
 export const SPOT_AND_PERP_EXCHANGES = ['binance', 'bitget', 'bybit', 'gate', 'okx'] as const;
-export type SpotAndPerpExchange = typeof SPOT_AND_PERP_EXCHANGES[number];
+export type SpotAndPerpExchange = (typeof SPOT_AND_PERP_EXCHANGES)[number];
 
 // Exchanges that support perp only
 export const PERP_ONLY_EXCHANGES = ['hyperliquid'] as const;
-export type PerpOnlyExchange = typeof PERP_ONLY_EXCHANGES[number];
+export type PerpOnlyExchange = (typeof PERP_ONLY_EXCHANGES)[number];
 
-export const SUPPORTED_SYMBOLS = [
-  'BTC/USDT', 'ETH/USDT', 'BNB/USDT', 'SOL/USDT', 'ADA/USDT',
-  'DOT/USDT', 'AVAX/USDT', 'MATIC/USDT', 'LINK/USDT', 'UNI/USDT',
-  'LTC/USDT', 'BCH/USDT', 'XRP/USDT', 'DOGE/USDT', 'ATOM/USDT',
-  'FTM/USDT', 'NEAR/USDT', 'ALGO/USDT', 'VET/USDT', 'ICP/USDT'
-] as const; 
+// API response structures
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+  timestamp: number;
+  count?: number;
+  total?: number;
+  cached?: boolean;
+}
+
+export interface SpreadsResponse extends ApiResponse<PriceRow[]> {}
+
+export interface TickersResponse extends ApiResponse<{
+  [exchange: string]: {
+    [symbol: string]: TickerData;
+  };
+}> {}
+
+export interface FundingRatesResponse extends ApiResponse<{
+  [exchange: string]: {
+    [symbol: string]: FundingRate;
+  };
+}> {}
+
+export interface HealthResponse
+  extends ApiResponse<{
+    exchanges: { [exchange: string]: boolean };
+    cache: {
+      size: number;
+      keys: string[];
+      lastUpdate: number;
+      isCached: boolean;
+    };
+    uptime: number;
+  }> {}
+
+export interface ExchangesResponse
+  extends ApiResponse<{
+    all: string[];
+    spot: string[];
+    perp: string[];
+    spotAndPerp: string[];
+    perpOnly: string[];
+    capabilities: {
+      [exchangeName: string]: {
+        supportsSpot: boolean;
+        supportsPerp: boolean;
+        marketTypes: MarketType[];
+      };
+    };
+  }> {}
+
+export interface ExchangesByMarketResponse
+  extends ApiResponse<{
+    marketType: MarketType;
+    exchanges: string[];
+    count: number;
+  }> {}
+
+// Error types
+export type ErrorType =
+  | 'Validation Error'
+  | 'Invalid exchange'
+  | 'Invalid market type'
+  | 'Service Temporarily Unavailable'
+  | 'Internal Server Error'
+  | 'Health check failed'
+  | 'Endpoint not found';
+
+// Filter options for API requests
+export interface FilterOptions {
+  minSpread?: number;
+  minVolume?: number;
+  exchanges?: string[];
+  search?: string;
+  limit?: number;
+  refresh?: 'true' | 'false';
+}

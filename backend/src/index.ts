@@ -6,17 +6,19 @@ const app: Application = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-app.use(cors({
-  origin: [
-    'http://localhost:3000', 
-    'http://127.0.0.1:3000', 
-    'http://localhost:4000',
-    'http://localhost:3002',
-    // Docker internal network - frontend container
-    'http://frontend:3000'
-  ],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://localhost:4000',
+      'http://localhost:3002',
+      // Docker internal network - frontend container
+      'http://frontend:3000',
+    ],
+    credentials: true,
+  }),
+);
 
 app.use(express.json());
 
@@ -36,20 +38,20 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     endpoints: {
       spreads: '/api/spreads',
-      tickers: '/api/tickers', 
+      tickers: '/api/tickers',
       health: '/api/health',
-      fundingRates: '/api/funding-rates'
-    }
+      fundingRates: '/api/funding-rates',
+    },
   });
 });
 
 // Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, req: express.Request, res: express.Response) => {
   console.error('❌ Server error:', err);
   res.status(500).json({
     success: false,
     error: 'Internal server error',
-    message: err.message
+    message: err.message,
   });
 });
 
@@ -58,7 +60,7 @@ app.use('*', (req, res) => {
   res.status(404).json({
     success: false,
     error: 'Endpoint not found',
-    path: req.originalUrl
+    path: req.originalUrl,
   });
 });
 
@@ -72,4 +74,4 @@ app.listen(PORT, () => {
   console.log(`   • GET /api/funding-rates - Futures funding rates`);
 });
 
-export default app; 
+export default app;

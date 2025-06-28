@@ -13,10 +13,10 @@ export interface CacheStats {
 }
 
 export class CacheService {
-  private cache: Map<string, CacheEntry<any>> = new Map();
+  private cache: Map<string, CacheEntry<unknown>> = new Map();
   private stats = {
     hits: 0,
-    misses: 0
+    misses: 0,
   };
 
   constructor(private defaultTtl: number = 30000) {} // 30 seconds default
@@ -25,16 +25,16 @@ export class CacheService {
     const entry: CacheEntry<T> = {
       data,
       timestamp: Date.now(),
-      ttl: ttl || this.defaultTtl
+      ttl: ttl || this.defaultTtl,
     };
-    
+
     this.cache.set(key, entry);
     console.log(`📦 Cached data for key: ${key} (TTL: ${entry.ttl}ms)`);
   }
 
   public get<T>(key: string): T | null {
     const entry = this.cache.get(key);
-    
+
     if (!entry) {
       this.stats.misses++;
       console.log(`❌ Cache miss for key: ${key}`);
@@ -42,7 +42,7 @@ export class CacheService {
     }
 
     const now = Date.now();
-    const isExpired = (now - entry.timestamp) > entry.ttl;
+    const isExpired = now - entry.timestamp > entry.ttl;
 
     if (isExpired) {
       this.cache.delete(key);
@@ -61,7 +61,7 @@ export class CacheService {
     if (!entry) return false;
 
     const now = Date.now();
-    const isExpired = (now - entry.timestamp) > entry.ttl;
+    const isExpired = now - entry.timestamp > entry.ttl;
 
     if (isExpired) {
       this.cache.delete(key);
@@ -93,7 +93,7 @@ export class CacheService {
       hitRate: total > 0 ? (this.stats.hits / total) * 100 : 0,
       missRate: total > 0 ? (this.stats.misses / total) * 100 : 0,
       totalHits: this.stats.hits,
-      totalMisses: this.stats.misses
+      totalMisses: this.stats.misses,
     };
   }
 
@@ -110,7 +110,7 @@ export class CacheService {
     let deletedCount = 0;
 
     for (const [key, entry] of this.cache.entries()) {
-      const isExpired = (now - entry.timestamp) > entry.ttl;
+      const isExpired = now - entry.timestamp > entry.ttl;
       if (isExpired) {
         this.cache.delete(key);
         deletedCount++;
@@ -138,7 +138,7 @@ export class CacheService {
       exists: true,
       expired: isExpired,
       age,
-      ttl: entry.ttl
+      ttl: entry.ttl,
     };
   }
 
@@ -148,4 +148,4 @@ export class CacheService {
       this.cleanup();
     }, intervalMs);
   }
-} 
+}

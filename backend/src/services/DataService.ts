@@ -12,8 +12,8 @@ export interface DataServiceConfig {
 export interface DataUpdateResult {
   success: boolean;
   spreads: SpreadData[];
-  tickers: any;
-  fundingRates: any;
+  tickers: Record<string, unknown>;
+  fundingRates: Record<string, unknown>;
   timestamp: number;
   error?: string;
 }
@@ -31,13 +31,13 @@ export class DataService {
     this.arbitrageService = new ArbitrageService();
     // Use PROCESSED_DATA_TTL which matches TICKERS_TTL for consistency
     this.cacheService = new CacheService(config.cacheTtl || CACHE_CONFIG.PROCESSED_DATA_TTL);
-    
+
     // Start auto cleanup
     this.cleanupTimer = this.cacheService.startAutoCleanup();
-    
+
     // Warm up cache on startup
     this.warmUpCaches();
-    
+
     // Start background updates if interval is specified
     if (config.updateInterval) {
       this.startBackgroundUpdates(config.updateInterval);
@@ -56,7 +56,7 @@ export class DataService {
 
   public async getAllData(forceRefresh = false): Promise<DataUpdateResult> {
     const cacheKey = 'all_data';
-    
+
     if (!forceRefresh) {
       const cached = this.cacheService.get<DataUpdateResult>(cacheKey);
       if (cached) {
@@ -69,7 +69,7 @@ export class DataService {
       console.log('⏳ Update already in progress, waiting...');
       // Wait for current update to complete
       while (this.isUpdating) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
       // Try to get the fresh data
       const cached = this.cacheService.get<DataUpdateResult>(cacheKey);
@@ -81,7 +81,10 @@ export class DataService {
     return this.updateAllData();
   }
 
-  public async getSpreads(filters?: FilterOptions, forceRefresh = false): Promise<{
+  public async getSpreads(
+    filters?: FilterOptions,
+    forceRefresh = false,
+  ): Promise<{
     success: boolean;
     data: SpreadData[];
     total: number;
@@ -91,7 +94,7 @@ export class DataService {
     timestamp: number;
   }> {
     const allData = await this.getAllData(forceRefresh);
-    
+
     if (!allData.success) {
       return {
         success: false,
@@ -99,11 +102,11 @@ export class DataService {
         total: 0,
         count: 0,
         cached: false,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
     }
 
-    let filteredSpreads = allData.spreads;
+    const filteredSpreads = allData.spreads;
     // Remove filters for now
     // if (filters) {
     //   filteredSpreads = this.arbitrageService.applyFilters(allData.spreads, filters);
@@ -116,24 +119,27 @@ export class DataService {
       count: filteredSpreads.length,
       cached: this.cacheService.has('all_data'),
       filters,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
   }
 
-  public async getTickers(exchangeName?: string, forceRefresh = false): Promise<{
+  public async getTickers(
+    exchangeName?: string,
+    forceRefresh = false,
+  ): Promise<{
     success: boolean;
-    data: any;
+    data: Record<string, unknown>;
     timestamp: number;
     cached: boolean;
   }> {
     const allData = await this.getAllData(forceRefresh);
-    
+
     if (!allData.success) {
       return {
         success: false,
         data: {},
         timestamp: Date.now(),
-        cached: false
+        cached: false,
       };
     }
 
@@ -143,24 +149,27 @@ export class DataService {
       success: true,
       data,
       timestamp: Date.now(),
-      cached: this.cacheService.has('all_data')
+      cached: this.cacheService.has('all_data'),
     };
   }
 
-  public async getFundingRates(exchangeName?: string, forceRefresh = false): Promise<{
+  public async getFundingRates(
+    exchangeName?: string,
+    forceRefresh = false,
+  ): Promise<{
     success: boolean;
-    data: any;
+    data: Record<string, unknown>;
     timestamp: number;
     cached: boolean;
   }> {
     const allData = await this.getAllData(forceRefresh);
-    
+
     if (!allData.success) {
       return {
         success: false,
         data: {},
         timestamp: Date.now(),
-        cached: false
+        cached: false,
       };
     }
 
@@ -170,31 +179,31 @@ export class DataService {
       success: true,
       data,
       timestamp: Date.now(),
-      cached: this.cacheService.has('all_data')
+      cached: this.cacheService.has('all_data'),
     };
   }
 
   public async getHealthStatus(): Promise<{
     success: boolean;
     exchanges: { [exchange: string]: boolean };
-    cache: any;
+    cache: Record<string, unknown>;
     uptime: number;
     timestamp: number;
   }> {
     try {
       const exchangeHealth = await this.exchangeService.healthCheck();
       const cacheStats = this.cacheService.getStats();
-      
+
       return {
         success: true,
         exchanges: exchangeHealth,
         cache: {
           ...cacheStats,
           lastUpdate: this.cacheService.getCacheInfo('all_data')?.age || 0,
-          isCached: this.cacheService.has('all_data')
+          isCached: this.cacheService.has('all_data'),
         },
         uptime: process.uptime(),
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
     } catch (error) {
       console.error('❌ Health check failed:', error);
@@ -203,7 +212,7 @@ export class DataService {
         exchanges: {},
         cache: {},
         uptime: process.uptime(),
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
     }
   }
@@ -213,7 +222,7 @@ export class DataService {
       const cached = this.cacheService.get<DataUpdateResult>('all_data');
       spreads = cached?.spreads || [];
     }
-    
+
     return this.arbitrageService.getStatistics(spreads);
   }
 
@@ -222,7 +231,7 @@ export class DataService {
       const cached = this.cacheService.get<DataUpdateResult>('all_data');
       spreads = cached?.spreads || [];
     }
-    
+
     return this.arbitrageService.getTopOpportunities(spreads, count);
   }
 
@@ -230,58 +239,59 @@ export class DataService {
     if (this.isUpdating) {
       console.log('⚠️ Update already in progress');
       const cached = this.cacheService.get<DataUpdateResult>('all_data');
-      return cached || {
-        success: false,
-        spreads: [],
-        tickers: {},
-        fundingRates: {},
-        timestamp: Date.now(),
-        error: 'Update in progress'
-      };
+      return (
+        cached || {
+          success: false,
+          spreads: [],
+          tickers: {},
+          fundingRates: {},
+          timestamp: Date.now(),
+          error: 'Update in progress',
+        }
+      );
     }
 
     this.isUpdating = true;
-    
+
     try {
       console.log('🔄 Starting comprehensive data update...');
-      
+
       // Fetch all exchange data
       const { tickers, fundingRates } = await this.exchangeService.fetchAllExchangeData();
-      
+
       // Calculate spreads
       const spreads = this.arbitrageService.calculatePriceSpreads(tickers, fundingRates);
-      
+
       const result: DataUpdateResult = {
         success: true,
         spreads,
         tickers,
         fundingRates,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       };
-      
+
       // Cache the result
       this.cacheService.set('all_data', result);
-      
+
       console.log('✅ Data update completed successfully');
       return result;
-      
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Error updating data:', error);
-      
+
       // Return cached data if available, otherwise empty result
       const cached = this.cacheService.get<DataUpdateResult>('all_data');
       if (cached) {
         console.log('📦 Returning cached data due to update error');
         return cached;
       }
-      
+
       return {
         success: false,
         spreads: [],
         tickers: {},
         fundingRates: {},
         timestamp: Date.now(),
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     } finally {
       this.isUpdating = false;
@@ -290,7 +300,7 @@ export class DataService {
 
   private startBackgroundUpdates(intervalMs: number): void {
     console.log(`⏰ Starting background updates every ${intervalMs}ms`);
-    
+
     this.updateTimer = setInterval(async () => {
       if (!this.isUpdating && !this.cacheService.has('all_data')) {
         console.log('⏰ Background update triggered');
@@ -313,7 +323,7 @@ export class DataService {
     return {
       stats: this.cacheService.getStats(),
       keys: this.cacheService.getKeys(),
-      size: this.cacheService.getSize()
+      size: this.cacheService.getSize(),
     };
   }
 
@@ -323,13 +333,13 @@ export class DataService {
       clearInterval(this.updateTimer);
       this.updateTimer = undefined;
     }
-    
+
     if (this.cleanupTimer) {
       clearInterval(this.cleanupTimer);
       this.cleanupTimer = undefined;
     }
-    
+
     this.cacheService.clear();
     console.log('🧹 DataService cleanup completed');
   }
-} 
+}
